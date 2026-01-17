@@ -23,6 +23,13 @@ from services.scraper.components.url_queue import URLQueueManager, QueuedURL
 from services.scraper.components.content_parser import ContentParser, ParsedContent
 from services.scraper.components.rate_limiter import ScrapeRateLimiter, RateLimitConfig
 from services.scraper.components.entity_extractor import EntityExtractor, ExtractedEntities
+from services.scraper.components.error_handler import (
+    CircuitBreaker,
+    ErrorCategory,
+    categorize_error,
+    should_retry,
+    get_retry_delay,
+)
 from services.scraper.schemas import ScrapeType, PageScrapeResult, ScrapeJobData, JobStatus
 
 logger = logging.getLogger(__name__)
@@ -43,6 +50,7 @@ class WebsiteScraper:
     DEFAULT_TIMEOUT = 30000  # 30 seconds
     MAX_DEPTH = 5  # Per ARCHITECTURE.md
     MAX_PAGES = 100  # Maximum pages per scrape
+    MAX_RETRIES = 3  # Maximum retries per page
 
     def __init__(
         self,
@@ -62,6 +70,7 @@ class WebsiteScraper:
         self.max_pages = max_pages
         self.rate_limiter = ScrapeRateLimiter(rate_limit_config)
         self.entity_extractor = EntityExtractor()
+        self.circuit_breaker = CircuitBreaker()
 
         self._browser: Browser | None = None
         self._playwright = None
@@ -164,11 +173,16 @@ class WebsiteScraper:
                         logger.debug("Skipping already-scraped URL: %s", queued.url)
                         continue
 
+                # Check circuit breaker
+                if self.circuit_breaker.is_open(domain):
+                    logger.warning("Circuit breaker open for %s, skipping", domain)
+                    continue
+
                 # Apply rate limiting
                 await self.rate_limiter.acquire(domain)
 
-                # Scrape the page
-                result = await self._scrape_page(
+                # Scrape the page with retries
+                result = await self._scrape_page_with_retry(
                     page, queued, content_parser, url_queue
                 )
                 results.append(result)
@@ -176,6 +190,12 @@ class WebsiteScraper:
 
                 # Record response time for adaptive rate limiting
                 self.rate_limiter.record_response_time(domain, result.scrape_time_ms)
+
+                # Update circuit breaker
+                if result.success:
+                    self.circuit_breaker.record_success(domain)
+                else:
+                    self.circuit_breaker.record_failure(domain)
 
                 # Aggregate entities
                 if result.success:
@@ -204,6 +224,84 @@ class WebsiteScraper:
         logger.info("Queue stats: %s", url_queue.stats)
 
         return results, all_entities
+
+    async def _scrape_page_with_retry(
+        self,
+        page: Page,
+        queued: QueuedURL,
+        content_parser: ContentParser,
+        url_queue: URLQueueManager,
+    ) -> PageScrapeResult:
+        """
+        Scrape a page with retry logic.
+
+        Args:
+            page: Playwright page.
+            queued: Queued URL to scrape.
+            content_parser: Content parser instance.
+            url_queue: URL queue for adding discovered links.
+
+        Returns:
+            PageScrapeResult with scrape outcome.
+        """
+        last_error = None
+        last_status = None
+
+        for attempt in range(self.MAX_RETRIES):
+            result = await self._scrape_page(
+                page, queued, content_parser, url_queue
+            )
+
+            # Success - return immediately
+            if result.success:
+                if attempt > 0:
+                    logger.info(
+                        "Retry succeeded for %s on attempt %d",
+                        queued.url[:80],
+                        attempt + 1,
+                    )
+                return result
+
+            # Categorize error
+            category = categorize_error(
+                Exception(result.error or "Unknown error"),
+                result.http_status,
+            )
+
+            # Check if should retry
+            if not should_retry(category, attempt, self.MAX_RETRIES):
+                logger.debug(
+                    "Not retrying %s (category=%s, attempt=%d)",
+                    queued.url[:80],
+                    category,
+                    attempt,
+                )
+                return result
+
+            # Calculate retry delay
+            delay = get_retry_delay(category, attempt)
+            logger.info(
+                "Retrying %s in %.1fs (attempt %d/%d, category=%s)",
+                queued.url[:80],
+                delay,
+                attempt + 1,
+                self.MAX_RETRIES,
+                category,
+            )
+
+            # Wait before retry
+            await asyncio.sleep(delay)
+
+            last_error = result.error
+            last_status = result.http_status
+
+        # All retries exhausted
+        logger.warning(
+            "All retries exhausted for %s (last_error=%s)",
+            queued.url[:80],
+            last_error,
+        )
+        return result
 
     async def _scrape_page(
         self,
