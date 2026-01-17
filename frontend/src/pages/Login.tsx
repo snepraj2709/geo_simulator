@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { authService } from '@/services/auth';
 import { useAuthStore } from '@/store/authStore';
+import { User } from '@/types';
 
 export default function Login() {
   const [isLogin, setIsLogin] = useState(true);
@@ -15,6 +16,26 @@ export default function Login() {
   
   const navigate = useNavigate();
   const { setUser, setToken } = useAuthStore();
+
+  const handleGuestLogin = () => {
+    // Create a dummy user and token for guest access
+    const guestUser: User = {
+      id: 'guest-user-id',
+      organization_id: 'guest-org-id',
+      email: 'guest@example.com',
+      name: 'Guest User',
+      role: 'viewer',
+      is_active: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    const dummyToken = 'guest-jwt-token-' + Date.now();
+    
+    setUser(guestUser);
+    setToken(dummyToken);
+    navigate('/');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,7 +60,7 @@ export default function Login() {
         navigate('/');
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Authentication failed');
+      setError(err.response?.data?.message || 'Authentication failed. Try "Login as Guest" to explore the app.');
     } finally {
       setLoading(false);
     }
@@ -122,6 +143,14 @@ export default function Login() {
             >
               {loading ? 'Loading...' : isLogin ? 'Sign In' : 'Sign Up'}
             </button>
+
+            <button
+              type="button"
+              onClick={handleGuestLogin}
+              className="btn btn-outline w-full h-11 mt-3"
+            >
+              Login as Guest
+            </button>
           </form>
 
           <div className="mt-6 text-center">
@@ -133,6 +162,12 @@ export default function Login() {
                 ? "Don't have an account? Sign up"
                 : 'Already have an account? Sign in'}
             </button>
+          </div>
+
+          <div className="mt-4 text-center">
+            <p className="text-xs text-neutral-500 dark:text-neutral-400">
+              Use "Login as Guest" to explore the app without authentication
+            </p>
           </div>
         </div>
       </motion.div>
