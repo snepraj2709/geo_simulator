@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { ChevronDown, ChevronUp, Edit2, Check } from 'lucide-react';
@@ -13,7 +13,12 @@ export function PromptGenerationScreen({ icps, onComplete }: PromptGenerationScr
   const [expandedICP, setExpandedICP] = useState<string | null>(icps[0]?.id || null);
   const [editingPrompt, setEditingPrompt] = useState<string | null>(null);
   const [editedText, setEditedText] = useState('');
-  const [localICPs, setLocalICPs] = useState(icps);
+  const [localICPs, setLocalICPs] = useState<ICP[]>([]);
+
+  // Sync icps prop with localICPs state, preventing duplicates in Strict Mode
+  useEffect(() => {
+    setLocalICPs(icps);
+  }, [icps]);
 
   const handleToggleICP = (icpId: string) => {
     setExpandedICP(expandedICP === icpId ? null : icpId);

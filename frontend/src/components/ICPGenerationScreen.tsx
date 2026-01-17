@@ -14,12 +14,24 @@ export function ICPGenerationScreen({ onComplete }: ICPGenerationScreenProps) {
   const [approvedICPs, setApprovedICPs] = useState<Set<number>>(new Set());
 
   useEffect(() => {
+    // Reset state to prevent duplicates in Strict Mode
+    setVisibleICPs([]);
+    
+    // Store timeout IDs for cleanup
+    const timeouts: NodeJS.Timeout[] = [];
+    
     // Reveal ICPs one by one
     defaultIcps.forEach((_, index) => {
-      setTimeout(() => {
+      const timeout = setTimeout(() => {
         setVisibleICPs((prev) => [...prev, defaultIcps[index]]);
       }, index * 1200);
+      timeouts.push(timeout);
     });
+    
+    // Cleanup function to cancel all timeouts
+    return () => {
+      timeouts.forEach(timeout => clearTimeout(timeout));
+    };
   }, []);
 
   const handleApprove = (index: number) => {
