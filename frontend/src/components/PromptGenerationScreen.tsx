@@ -45,7 +45,7 @@ export function PromptGenerationScreen({ icps, onComplete }: PromptGenerationScr
   };
 
   return (
-    <div className="min-h-screen flex flex-col px-4 py-16 relative overflow-hidden">
+    <div className="min-h-screen flex flex-col px-4 py-5 relative overflow-hidden">
       {/* Background */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 left-1/3 w-96 h-96 bg-blue-600/10 rounded-full blur-[100px] animate-pulse"></div>

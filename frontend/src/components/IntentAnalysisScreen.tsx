@@ -36,7 +36,7 @@ export function IntentAnalysisScreen({ onComplete }: IntentAnalysisScreenProps) 
   ];
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-16 relative overflow-hidden">
+    <div className="min-h-screen flex flex-col items-center px-4 pt-5 relative overflow-hidden">
       {/* Background */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/3 right-1/3 w-96 h-96 bg-violet-600/10 rounded-full blur-[100px] animate-pulse"></div>

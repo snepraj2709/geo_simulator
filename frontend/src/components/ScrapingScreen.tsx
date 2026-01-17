@@ -78,7 +78,7 @@ export function ScrapingScreen({ brandUrl, onComplete }: ScrapingScreenProps) {
 
       <div className="relative z-10 max-w-4xl mx-auto w-full space-y-12">
         {/* Header */}
-        <div className="text-center space-y-3 mt-6">
+        <div className="text-center space-y-3 mt-5">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-violet-500/10 border border-violet-500/20">
             <div className="w-2 h-2 rounded-full bg-violet-400 animate-pulse"></div>
             <span className="text-sm text-violet-300">Analyzing {brandUrl}</span>

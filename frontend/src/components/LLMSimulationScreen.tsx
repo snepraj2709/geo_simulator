@@ -86,7 +86,7 @@ export function LLMSimulationScreen({ icps, onComplete }: LLMSimulationScreenPro
 
       <div className="relative z-10 max-w-6xl mx-auto w-full flex flex-col h-screen max-h-screen">
         {/* Header */}
-        <div className="flex-shrink-0 text-center space-y-3 mb-6">
+        <div className="flex-shrink-0 text-center space-y-3 mb-6 mt-5">
           <h2 className="text-4xl text-white">Running AI Simulations</h2>
           <p className="text-gray-400">
             Testing prompts across multiple language models
