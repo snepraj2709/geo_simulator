@@ -99,7 +99,7 @@ export function ICPGenerationScreen({ onComplete }: ICPGenerationScreenProps) {
                   <div className="flex-1 min-w-0">
                     <h3 className="text-white mb-1">{icp.name}</h3>
                     <p className="text-sm text-violet-400 mb-2">{icp.title}</p>
-                    <p className="text-sm text-gray-400 leading-relaxed">{icp.description}</p>
+                    <p className="text-sm text-gray-400 leading-relaxed line-clamp-4 h-24">{icp.description}</p>
                   </div>
                 </div>
 
