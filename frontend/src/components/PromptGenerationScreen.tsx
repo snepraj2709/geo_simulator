@@ -160,7 +160,7 @@ export function PromptGenerationScreen({ icps, onComplete }: PromptGenerationScr
         </div>
 
         {/* Action Buttons */}
-        <div className="flex justify-center gap-4 pt-8">
+        <div className="flex justify-center gap-4 py-8">
           <Button
             onClick={handleApprove}
             className="px-8 h-12 bg-gradient-to-r from-violet-600 to-blue-600 hover:from-violet-700 hover:to-blue-700 text-white shadow-lg shadow-violet-500/25"

@@ -151,7 +151,7 @@ export function IntentAnalysisScreen({ onComplete }: IntentAnalysisScreenProps) 
             </div>
 
             {/* Continue Button */}
-            <div className="flex justify-center pt-6">
+            <div className="flex justify-center py-8">
               <Button
                 onClick={onComplete}
                 className="px-8 h-12 bg-gradient-to-r from-violet-600 to-blue-600 hover:from-violet-700 hover:to-blue-700 text-white shadow-lg shadow-violet-500/25"

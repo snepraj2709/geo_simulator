@@ -41,7 +41,7 @@ const [currentStep, setCurrentStep] = useState<SimulationStep>('landing');
   };
 
   return (
-    <div className="dark min-h-screen bg-[#0a0a0f] text-foreground">
+    <div className="dark min-h-screen bg-[#0a0a0f] text-foreground pb-10">
       {currentStep === 'landing' && (
         <LandingScreen onStart={handleStartSimulation} />
       )}

@@ -170,7 +170,7 @@ export function ICPGenerationScreen({ onComplete }: ICPGenerationScreenProps) {
 
         {/* Continue Button */}
         {hasApprovedICPs && (
-          <div className="flex justify-center pt-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="flex justify-center py-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <Button
               onClick={handleContinue}
               className="px-8 h-12 bg-gradient-to-r from-violet-600 to-blue-600 hover:from-violet-700 hover:to-blue-700 text-white shadow-lg shadow-violet-500/25"
