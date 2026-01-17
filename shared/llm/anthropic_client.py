@@ -8,7 +8,14 @@ from typing import Any
 from anthropic import AsyncAnthropic
 
 from shared.config import settings
-from shared.llm.base import LLMClient, LLMResponse
+from shared.llm.base import LLMClient, LLMResponse, ResponseFormat
+
+
+# JSON mode instruction to append for Claude
+JSON_INSTRUCTION = """
+
+IMPORTANT: Your response must be valid JSON only. Do not include any text before or after the JSON.
+Do not use markdown code blocks. Output raw JSON starting with { or [."""
 
 
 class AnthropicClient(LLMClient):
@@ -26,14 +33,20 @@ class AnthropicClient(LLMClient):
         system_prompt: str | None = None,
         temperature: float = 0.7,
         max_tokens: int = 2048,
+        response_format: ResponseFormat = ResponseFormat.TEXT,
         **kwargs: Any,
     ) -> LLMResponse:
         """Generate completion using Anthropic."""
+        # For JSON mode, append instruction to prompt
+        if response_format == ResponseFormat.JSON:
+            prompt = prompt + JSON_INSTRUCTION
+
         messages = [{"role": "user", "content": prompt}]
         return await self.chat(
             messages,
             temperature,
             max_tokens,
+            response_format=response_format,
             system_prompt=system_prompt,
             **kwargs,
         )
@@ -43,11 +56,17 @@ class AnthropicClient(LLMClient):
         messages: list[dict[str, str]],
         temperature: float = 0.7,
         max_tokens: int = 2048,
+        response_format: ResponseFormat = ResponseFormat.TEXT,
         system_prompt: str | None = None,
         **kwargs: Any,
     ) -> LLMResponse:
         """Generate chat completion using Anthropic."""
         start_time = time.perf_counter()
+
+        # For JSON mode, enhance system prompt
+        effective_system = system_prompt or ""
+        if response_format == ResponseFormat.JSON:
+            effective_system = (effective_system + JSON_INSTRUCTION).strip()
 
         create_kwargs: dict[str, Any] = {
             "model": self.model,
@@ -56,8 +75,8 @@ class AnthropicClient(LLMClient):
             "max_tokens": max_tokens,
         }
 
-        if system_prompt:
-            create_kwargs["system"] = system_prompt
+        if effective_system:
+            create_kwargs["system"] = effective_system
 
         response = await self.client.messages.create(**create_kwargs, **kwargs)
 

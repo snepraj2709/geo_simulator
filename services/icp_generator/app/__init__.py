@@ -1,0 +1,1 @@
+"""ICP Generator app module."""
