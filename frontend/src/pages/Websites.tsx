@@ -28,10 +28,10 @@ export default function Websites() {
             Manage your tracked websites
           </p>
         </div>
-        <button className="btn btn-primary h-10 px-4">
+        <Link to="/websites/add" className="btn btn-primary h-10 px-4">
           <Plus className="w-4 h-4 mr-2" />
           Add Website
-        </button>
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

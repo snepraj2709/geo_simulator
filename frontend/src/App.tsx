@@ -7,6 +7,7 @@ import Websites from './pages/Websites';
 import WebsiteDetail from './pages/WebsiteDetail';
 import SimulationDetail from './pages/SimulationDetail';
 import BrandAnalysis from './pages/BrandAnalysis';
+import PipelineDemo from './pages/PipelineDemo';
 
 function App() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -26,6 +27,7 @@ function App() {
         <Route path="websites/:websiteId" element={<WebsiteDetail />} />
         <Route path="websites/:websiteId/simulations/:simulationId" element={<SimulationDetail />} />
         <Route path="websites/:websiteId/brands" element={<BrandAnalysis />} />
+        <Route path="websites/add" element={<PipelineDemo />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
