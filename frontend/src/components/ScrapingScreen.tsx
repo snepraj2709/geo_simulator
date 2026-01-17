@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { FileText, Tags, Network } from 'lucide-react';
 import { Progress } from './ui/progress';
 import { ScrapingStats } from '@/types';
@@ -16,6 +17,7 @@ export function ScrapingScreen({ brandUrl, onComplete }: ScrapingScreenProps) {
     topicsMapped: 0,
   });
   const [currentStep, setCurrentStep] = useState(1);
+  const [, setPreviousStep] = useState(0);
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
@@ -41,12 +43,15 @@ export function ScrapingScreen({ brandUrl, onComplete }: ScrapingScreenProps) {
         const newProgress = Math.min(prev + Math.random() * 3 + 1, 100);
         return newProgress;
       });
-    }, 200);
+    }, 1000);
 
     // Update steps
     const stepInterval = setInterval(() => {
       setCurrentStep(prev => {
-        if (prev < 4) return prev + 1;
+        if (prev < 4) {
+          setPreviousStep(prev);
+          return prev + 1;
+        }
         return prev;
       });
     }, 2000);
@@ -127,47 +132,36 @@ export function ScrapingScreen({ brandUrl, onComplete }: ScrapingScreenProps) {
         </div>
 
         {/* Step indicator */}
-        <div className="space-y-4">
-          {steps.map((step) => {
-            const Icon = step.icon;
-            const isActive = currentStep === step.id;
-            const isComplete = currentStep > step.id;
-            
-            return (
-              <div
-                key={step.id}
-                className={`flex items-center gap-4 p-4 rounded-xl border transition-all duration-500 ${
-                  isActive
-                    ? 'bg-white/10 border-violet-500/50 shadow-lg shadow-violet-500/10'
-                    : isComplete
-                    ? 'bg-white/5 border-white/10'
-                    : 'bg-transparent border-white/5 opacity-40'
-                }`}
-              >
-                <div
-                  className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${
-                    isActive
-                      ? 'bg-violet-500/20 text-violet-400'
-                      : isComplete
-                      ? 'bg-green-500/20 text-green-400'
-                      : 'bg-white/5 text-gray-600'
-                  }`}
+        <div className="relative h-20">
+          <AnimatePresence mode="wait">
+            {steps.slice(0, 4).map((step) => {
+              const Icon = step.icon;
+              const isActive = currentStep === step.id;
+              
+              if (!isActive) return null;
+              
+              return (
+                <motion.div
+                  key={step.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.5 }}
+                  className="absolute inset-0 flex items-center gap-4 p-4 rounded-xl border bg-white/10 border-violet-500/50 shadow-lg shadow-violet-500/10"
                 >
-                  <Icon className="w-5 h-5" />
-                </div>
-                <span className={isActive || isComplete ? 'text-white' : 'text-gray-600'}>
-                  {step.name}
-                </span>
-                {isActive && (
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-violet-500/20 text-violet-400">
+                    <Icon className="w-5 h-5" />
+                  </div>
+                  <span className="text-white">{step.name}</span>
                   <div className="ml-auto flex gap-1">
                     <div className="w-2 h-2 bg-violet-400 rounded-full animate-pulse"></div>
                     <div className="w-2 h-2 bg-violet-400 rounded-full animate-pulse delay-100"></div>
                     <div className="w-2 h-2 bg-violet-400 rounded-full animate-pulse delay-200"></div>
                   </div>
-                )}
-              </div>
-            );
-          })}
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
         </div>
       </div>
     </div>
