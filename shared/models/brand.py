@@ -1,12 +1,15 @@
 """
 Brand and belief map models.
+
+Brands are entities mentioned in LLM responses. The system tracks
+their presence, position, and the beliefs they install.
 """
 
 import uuid
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, Integer, Numeric, String, Boolean
+from sqlalchemy import ForeignKey, Index, Integer, Numeric, String, Boolean, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -20,7 +23,19 @@ if TYPE_CHECKING:
 
 
 class Brand(Base, UUIDMixin, TimestampMixin):
-    """Brand entity model."""
+    """
+    Brand entity model.
+
+    Represents a brand/company that can be mentioned in LLM responses.
+    Brands are normalized by name to prevent duplicates.
+
+    Attributes:
+        name: Display name of the brand
+        normalized_name: Lowercase, trimmed name for matching
+        domain: Website domain if known
+        industry: Industry classification
+        is_tracked: True if this is a user's own brand
+    """
 
     __tablename__ = "brands"
 
@@ -33,7 +48,7 @@ class Brand(Base, UUIDMixin, TimestampMixin):
     )
     domain: Mapped[str | None] = mapped_column(String(255))
     industry: Mapped[str | None] = mapped_column(String(255))
-    is_tracked: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    is_tracked: Mapped[bool] = mapped_column(Boolean, default=False)
 
     # Relationships
     brand_states: Mapped[list["LLMBrandState"]] = relationship(
@@ -47,9 +62,26 @@ class Brand(Base, UUIDMixin, TimestampMixin):
         cascade="all, delete-orphan",
     )
 
+    __table_args__ = (
+        # Index for finding tracked brands quickly
+        Index("idx_brands_tracked", "is_tracked", postgresql_where=(is_tracked == True)),
+    )
+
 
 class LLMBrandState(Base, UUIDMixin, TimestampMixin):
-    """Brand state per LLM response."""
+    """
+    Brand state per LLM response.
+
+    Tracks how a specific brand appeared in a specific LLM response,
+    including its presence type, position, and the belief it installs.
+
+    Attributes:
+        llm_response_id: The response containing this brand
+        brand_id: The brand that was mentioned
+        presence: ignored, mentioned, trusted, recommended, compared
+        position_rank: Position in response (1 = first mentioned)
+        belief_sold: truth, superiority, outcome, transaction, identity, social_proof
+    """
 
     __tablename__ = "llm_brand_states"
 
@@ -66,7 +98,7 @@ class LLMBrandState(Base, UUIDMixin, TimestampMixin):
         index=True,
     )
 
-    # LLMBrandState
+    # Brand presence state
     presence: Mapped[str] = mapped_column(
         String(50),
         nullable=False,
@@ -87,9 +119,32 @@ class LLMBrandState(Base, UUIDMixin, TimestampMixin):
         back_populates="brand_states",
     )
 
+    __table_args__ = (
+        # Each response can only have one state per brand
+        UniqueConstraint("llm_response_id", "brand_id", name="uq_llm_brand_states_response_brand"),
+    )
+
 
 class LLMAnswerBeliefMap(Base, UUIDMixin, TimestampMixin):
-    """Aggregated belief map for analytics."""
+    """
+    Aggregated belief map for analytics.
+
+    Denormalized view combining LLM response, prompt classification, and brand
+    state data for efficient querying in analytics dashboards.
+
+    Attributes:
+        llm_response_id: Source response
+        prompt_classification_id: Classification of the prompt (optional)
+        brand_id: The brand being tracked
+        intent_type: Denormalized from classification
+        funnel_stage: Denormalized from classification
+        buying_signal: Denormalized from classification
+        trust_need: Denormalized from classification
+        presence: Denormalized from brand state
+        position_rank: Denormalized from brand state
+        belief_sold: Denormalized from brand state
+        llm_provider: Denormalized from response
+    """
 
     __tablename__ = "llm_answer_belief_maps"
 

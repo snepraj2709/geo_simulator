@@ -1,12 +1,15 @@
 """
 Website and scraping models.
+
+Websites are the primary entities that users track. Each website
+can have scraped pages, analysis results, ICPs, and simulation runs.
 """
 
 import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -22,7 +25,24 @@ if TYPE_CHECKING:
 
 
 class Website(Base, UUIDMixin, TimestampMixin):
-    """Tracked website model."""
+    """
+    Tracked website model.
+
+    Represents a website being monitored for brand presence in LLM responses.
+    Each organization can track multiple websites, but each domain is unique
+    within an organization.
+
+    Attributes:
+        organization_id: Owner organization
+        domain: Website domain (e.g., example.com)
+        url: Full URL of the website
+        name: Display name for the website
+        description: Optional description
+        status: pending, scraping, completed, failed
+        last_scraped_at: Last time content was scraped
+        last_hard_scrape_at: Last full re-scrape (rate limited)
+        scrape_depth: How deep to crawl (default 3)
+    """
 
     __tablename__ = "websites"
 
@@ -77,9 +97,32 @@ class Website(Base, UUIDMixin, TimestampMixin):
         cascade="all, delete-orphan",
     )
 
+    __table_args__ = (
+        # Each organization can only have one website per domain
+        UniqueConstraint("organization_id", "domain", name="uq_websites_org_domain"),
+    )
+
 
 class ScrapedPage(Base, UUIDMixin):
-    """Scraped page content model."""
+    """
+    Scraped page content model.
+
+    Stores content scraped from website pages. Each page is identified
+    by its URL hash to ensure uniqueness within a website.
+
+    Attributes:
+        website_id: Parent website reference
+        url: Full URL of the page
+        url_hash: SHA-256 hash of URL for quick lookup
+        title: Page title from <title> tag
+        meta_description: Meta description content
+        content_text: Extracted text content
+        content_html_path: S3 path to full HTML
+        word_count: Number of words in content
+        page_type: homepage, product, service, blog, about, contact, etc.
+        http_status: HTTP status code from scraping
+        scraped_at: When the page was scraped
+    """
 
     __tablename__ = "scraped_pages"
 
@@ -109,9 +152,29 @@ class ScrapedPage(Base, UUIDMixin):
         back_populates="pages",
     )
 
+    __table_args__ = (
+        # Each website can only have one page per URL hash
+        UniqueConstraint("website_id", "url_hash", name="uq_scraped_pages_website_url"),
+    )
+
 
 class WebsiteAnalysis(Base, UUIDMixin):
-    """Website analysis results model."""
+    """
+    Website analysis results model.
+
+    Stores the results of AI analysis of website content, including
+    industry classification, business model, and competitive landscape.
+
+    Attributes:
+        website_id: Parent website (one analysis per website)
+        industry: Detected industry (e.g., "SaaS", "E-commerce")
+        business_model: b2b, b2c, b2b2c, marketplace
+        primary_offerings: List of products/services offered
+        value_propositions: Key value propositions identified
+        target_markets: Target market segments
+        competitors_mentioned: Competitor brands found on the site
+        analyzed_at: When analysis was performed
+    """
 
     __tablename__ = "website_analysis"
 
@@ -120,6 +183,7 @@ class WebsiteAnalysis(Base, UUIDMixin):
         ForeignKey("websites.id", ondelete="CASCADE"),
         unique=True,
         nullable=False,
+        index=True,
     )
     industry: Mapped[str | None] = mapped_column(String(255))
     business_model: Mapped[str | None] = mapped_column(String(100))

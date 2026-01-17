@@ -1,5 +1,7 @@
 """
 Enum definitions for the LLM Brand Monitor.
+
+All enums inherit from str and Enum for JSON serialization compatibility.
 """
 
 from enum import Enum
@@ -12,6 +14,45 @@ class WebsiteStatus(str, Enum):
     SCRAPING = "scraping"
     COMPLETED = "completed"
     FAILED = "failed"
+
+
+class PlanType(str, Enum):
+    """Organization plan type."""
+
+    FREE = "free"
+    PRO = "pro"
+    ENTERPRISE = "enterprise"
+
+
+class UserRole(str, Enum):
+    """User role within organization."""
+
+    ADMIN = "admin"
+    MEMBER = "member"
+    VIEWER = "viewer"
+
+
+class BusinessModel(str, Enum):
+    """Business model type for website analysis."""
+
+    B2B = "b2b"
+    B2C = "b2c"
+    B2B2C = "b2b2c"
+    MARKETPLACE = "marketplace"
+
+
+class PageType(str, Enum):
+    """Scraped page type classification."""
+
+    HOMEPAGE = "homepage"
+    PRODUCT = "product"
+    SERVICE = "service"
+    BLOG = "blog"
+    ABOUT = "about"
+    CONTACT = "contact"
+    PRICING = "pricing"
+    FAQ = "faq"
+    OTHER = "other"
 
 
 class IntentType(str, Enum):
@@ -84,3 +125,11 @@ class LLMProviderEnum(str, Enum):
     GOOGLE = "google"
     ANTHROPIC = "anthropic"
     PERPLEXITY = "perplexity"
+
+
+class CompetitorRelationshipType(str, Enum):
+    """Type of competitive relationship between brands."""
+
+    DIRECT = "direct"  # Direct competitor in same market
+    INDIRECT = "indirect"  # Indirect competitor, different approach
+    SUBSTITUTE = "substitute"  # Alternative/substitute product

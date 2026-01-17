@@ -1,12 +1,15 @@
 """
 Simulation and LLM Response models.
+
+Simulations run prompts against multiple LLM providers and store
+their responses for brand analysis.
 """
 
 import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -21,7 +24,20 @@ if TYPE_CHECKING:
 
 
 class SimulationRun(Base, UUIDMixin, TimestampMixin):
-    """Simulation run model."""
+    """
+    Simulation run model.
+
+    Represents a batch run of prompts against LLM providers for a website.
+    Tracks progress and timing of the simulation.
+
+    Attributes:
+        website_id: Website being simulated
+        status: pending, running, completed, failed
+        total_prompts: Total number of prompts to process
+        completed_prompts: Number of prompts completed so far
+        started_at: When the simulation started
+        completed_at: When the simulation finished
+    """
 
     __tablename__ = "simulation_runs"
 
@@ -54,7 +70,22 @@ class SimulationRun(Base, UUIDMixin, TimestampMixin):
 
 
 class LLMResponse(Base, UUIDMixin, TimestampMixin):
-    """LLM response model."""
+    """
+    LLM response model.
+
+    Stores the response from an LLM provider for a specific prompt.
+    Each simulation run generates one response per prompt per provider.
+
+    Attributes:
+        simulation_run_id: Parent simulation run
+        prompt_id: The prompt that was sent
+        llm_provider: openai, google, anthropic, perplexity
+        llm_model: Specific model used (gpt-4, gemini-pro, etc.)
+        response_text: Full text of the LLM response
+        response_tokens: Number of tokens in response
+        latency_ms: Response time in milliseconds
+        brands_mentioned: Array of brand names extracted from response
+    """
 
     __tablename__ = "llm_responses"
 
@@ -93,4 +124,12 @@ class LLMResponse(Base, UUIDMixin, TimestampMixin):
         "LLMBrandState",
         back_populates="llm_response",
         cascade="all, delete-orphan",
+    )
+
+    __table_args__ = (
+        # Each simulation run can only have one response per prompt per provider
+        UniqueConstraint(
+            "simulation_run_id", "prompt_id", "llm_provider",
+            name="uq_llm_responses_run_prompt_provider",
+        ),
     )

@@ -1,15 +1,34 @@
 """
 Shared data models and SQLAlchemy ORM models.
+
+This package contains all SQLAlchemy ORM models and Pydantic schemas
+for the LLM Brand Monitor application.
+
+Models are organized by domain:
+- user: Organization and User models
+- website: Website, ScrapedPage, WebsiteAnalysis
+- icp: Ideal Customer Profile
+- conversation: ConversationSequence, Prompt, PromptClassification
+- simulation: SimulationRun, LLMResponse
+- brand: Brand, LLMBrandState, LLMAnswerBeliefMap
+- competitive: CompetitorRelationship, ShareOfVoice, SubstitutionPattern
 """
 
 from shared.models.base import TimestampMixin, UUIDMixin
 from shared.models.enums import (
     BeliefType,
     BrandPresence,
+    BusinessModel,
+    CompetitorRelationshipType,
     FunnelStage,
     IntentType,
+    LLMProviderEnum,
+    PageType,
+    PlanType,
     PromptType,
     QueryIntent,
+    SimulationStatus,
+    UserRole,
     WebsiteStatus,
 )
 from shared.models.user import Organization, User
@@ -18,6 +37,7 @@ from shared.models.icp import ICP
 from shared.models.conversation import ConversationSequence, Prompt, PromptClassification
 from shared.models.simulation import LLMResponse, SimulationRun
 from shared.models.brand import Brand, LLMAnswerBeliefMap, LLMBrandState
+from shared.models.competitive import CompetitorRelationship, ShareOfVoice, SubstitutionPattern
 
 __all__ = [
     # Mixins
@@ -26,10 +46,17 @@ __all__ = [
     # Enums
     "BeliefType",
     "BrandPresence",
+    "BusinessModel",
+    "CompetitorRelationshipType",
     "FunnelStage",
     "IntentType",
+    "LLMProviderEnum",
+    "PageType",
+    "PlanType",
     "PromptType",
     "QueryIntent",
+    "SimulationStatus",
+    "UserRole",
     "WebsiteStatus",
     # User models
     "Organization",
@@ -51,4 +78,8 @@ __all__ = [
     "Brand",
     "LLMBrandState",
     "LLMAnswerBeliefMap",
+    # Competitive analysis models
+    "CompetitorRelationship",
+    "ShareOfVoice",
+    "SubstitutionPattern",
 ]
