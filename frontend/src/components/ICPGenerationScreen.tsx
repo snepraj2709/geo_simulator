@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Button } from './ui/button';
-import { Sparkles, Check } from 'lucide-react';
+import { Sparkles, Check, X } from 'lucide-react';
 import type { ICP } from '../types';
 import { generatePromptsForICP } from '@/data';
 import { defaultIcps } from '@/data/constants';
@@ -12,6 +12,7 @@ interface ICPGenerationScreenProps {
 export function ICPGenerationScreen({ onComplete }: ICPGenerationScreenProps) {
   const [visibleICPs, setVisibleICPs] = useState<ICP[]>([]);
   const [approvedICPs, setApprovedICPs] = useState<Set<number>>(new Set());
+  const [rejectedICPs, setRejectedICPs] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     // Reset state to prevent duplicates in Strict Mode
@@ -36,17 +37,33 @@ export function ICPGenerationScreen({ onComplete }: ICPGenerationScreenProps) {
 
   const handleApprove = (index: number) => {
     setApprovedICPs(prev => new Set(prev).add(index));
+    setRejectedICPs(prev => {
+      const next = new Set(prev);
+      next.delete(index);
+      return next;
+    });
+  };
+
+  const handleReject = (index: number) => {
+    setRejectedICPs(prev => new Set(prev).add(index));
+    setApprovedICPs(prev => {
+      const next = new Set(prev);
+      next.delete(index);
+      return next;
+    });
   };
 
   const handleContinue = () => {
-    const icpsWithPrompts: ICP[] = visibleICPs.map((icp) => ({
+    // Only pass approved ICPs to the next screen
+    const approvedICPsList = visibleICPs.filter((_, index) => approvedICPs.has(index));
+    const icpsWithPrompts: ICP[] = approvedICPsList.map((icp) => ({
       ...icp,
       prompts: [...(icp.prompts || []), ...generatePromptsForICP(icp.title)],
     }));
     onComplete(icpsWithPrompts);
   };
 
-  const allApproved = visibleICPs.length > 0 && visibleICPs.length === approvedICPs.size;
+  const hasApprovedICPs = approvedICPs.size > 0;
 
   return (
     <div className="min-h-screen flex flex-col px-4 pt-5 relative overflow-hidden">
@@ -70,6 +87,7 @@ export function ICPGenerationScreen({ onComplete }: ICPGenerationScreenProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-12">
           {visibleICPs.map((icp, index) => {
             const isApproved = approvedICPs.has(index);
+            const isRejected = rejectedICPs.has(index);
             
             return (
               <div
@@ -103,33 +121,55 @@ export function ICPGenerationScreen({ onComplete }: ICPGenerationScreenProps) {
                   </div>
                 </div>
 
-                {/* Approve Button */}
-                <Button
-                  onClick={() => handleApprove(index)}
-                  disabled={isApproved}
-                  className={`w-full ${
-                    isApproved
-                      ? 'bg-green-500/20 text-green-400 border border-green-500/30 hover:bg-green-500/20'
-                      : 'bg-white/5 hover:bg-white/10 text-white border border-white/10'
-                  }`}
-                  variant="outline"
-                >
-                  {isApproved ? (
-                    <>
-                      <Check className="w-4 h-4 mr-2" />
-                      Approved
-                    </>
-                  ) : (
-                    'Approve Persona'
-                  )}
-                </Button>
+                {/* Action Buttons */}
+                <div className="flex gap-3">
+                  <Button
+                    onClick={() => handleReject(index)}
+                    disabled={isRejected}
+                    className={`flex-1 ${
+                      isRejected
+                        ? 'bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/20'
+                        : 'bg-white/5 hover:bg-white/10 text-white border border-white/10'
+                    }`}
+                    variant="outline"
+                  >
+                    {isRejected ? (
+                      <>
+                        <X className="w-4 h-4 mr-2" />
+                        Rejected
+                      </>
+                    ) : (
+                      'Reject'
+                    )}
+                  </Button>
+                  
+                  <Button
+                    onClick={() => handleApprove(index)}
+                    disabled={isApproved}
+                    className={`flex-1 ${
+                      isApproved
+                        ? 'bg-green-500/20 text-green-400 border border-green-500/30 hover:bg-green-500/20'
+                        : 'bg-white/5 hover:bg-white/10 text-white border border-white/10'
+                    }`}
+                    variant="outline"
+                  >
+                    {isApproved ? (
+                      <>
+                        <Check className="w-4 h-4 mr-2" />
+                        Approved
+                      </>
+                    ) : (
+                      'Approve'
+                    )}
+                  </Button>
+                </div>
               </div>
             );
           })}
         </div>
 
         {/* Continue Button */}
-        {allApproved && (
+        {hasApprovedICPs && (
           <div className="flex justify-center pt-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <Button
               onClick={handleContinue}
