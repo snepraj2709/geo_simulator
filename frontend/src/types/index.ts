@@ -49,6 +49,12 @@ export interface AuthResponse {
 // ============================================================================
 // Websites & Scraping
 // ============================================================================
+export interface Step {
+  id: number;
+  name: string;
+  description: string;
+  icon: React.ElementType;
+}
 
 export interface Website {
   id: string;
@@ -81,6 +87,12 @@ export interface WebsiteAnalysis {
   competitors_mentioned?: string[];
 }
 
+export interface ScrapingStats {
+  pagesScraped: number;
+  entitiesExtracted: number;
+  topicsMapped: number;
+}
+
 export interface ScrapedPage {
   id: string;
   website_id: string;
@@ -109,12 +121,28 @@ export interface ScrapeJob {
 // Ideal Customer Profiles (ICPs)
 // ============================================================================
 
+export type SimulationStep = 
+  | 'landing' 
+  | 'scraping' 
+  | 'icp-generation' 
+  | 'prompt-generation' 
+  | 'llm-simulation' 
+  | 'intent-analysis' 
+  | 'report';
+
+
 export interface ICP {
   id: string;
   website_id: string;
   name: string;
+  title: string;
   description?: string;
   sequence_number: number;
+  avatar: string;
+  prompts: Array<{
+    id: string;
+    text: string;
+  }>;
   demographics: {
     age_range?: string;
     gender?: string;
@@ -171,6 +199,15 @@ export interface Prompt {
   sequence_order: number;
   classification?: PromptClassification;
   created_at: string;
+}
+
+
+export interface IntentData {
+  category: string;
+  count: number;
+  percentage: number;
+  color: string;
+  icon: React.ElementType;
 }
 
 export interface PromptClassification {
