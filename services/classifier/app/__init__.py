@@ -1,0 +1,3 @@
+"""
+Classifier service application module.
+"""
