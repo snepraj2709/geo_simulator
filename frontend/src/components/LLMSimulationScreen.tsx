@@ -9,7 +9,10 @@ interface LLMSimulationScreenProps {
   onComplete: () => void;
 }
 
-export function LLMSimulationScreen({ icps, onComplete }: LLMSimulationScreenProps) {
+export function LLMSimulationScreen({
+  icps,
+  onComplete,
+}: LLMSimulationScreenProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -17,12 +20,17 @@ export function LLMSimulationScreen({ icps, onComplete }: LLMSimulationScreenPro
   useEffect(() => {
     // Create messages for all prompts across all ICPs
     const allMessages: Message[] = [];
-    const models: Array<'gpt' | 'gemini' | 'claude' | 'perplexity'> = ['gpt', 'gemini', 'claude', 'perplexity'];
+    const models: Array<'gpt' | 'gemini' | 'claude' | 'perplexity'> = [
+      'gpt',
+      'gemini',
+      'claude',
+      'perplexity',
+    ];
 
-    icps.forEach(icp => {
+    icps.forEach((icp) => {
       // Only use first 2 prompts per ICP to keep simulation manageable
-      icp.prompts.slice(0, 2).forEach(prompt => {
-        models.forEach(model => {
+      icp.prompts.slice(0, 2).forEach((prompt) => {
+        models.forEach((model) => {
           allMessages.push({
             id: `${icp.id}-${prompt.id}-${model}`,
             model,
@@ -39,29 +47,29 @@ export function LLMSimulationScreen({ icps, onComplete }: LLMSimulationScreenPro
 
   useEffect(() => {
     if (currentIndex >= messages.length) {
-      // All messages processed
-      setTimeout(onComplete, 2000);
+      // All messages processed - wait 10 seconds before moving to next screen
+      setTimeout(onComplete, 20000);
       return;
     }
 
-    // Process next message
+    // Process next message - wait 2 seconds before starting
     const timer = setTimeout(() => {
-      setMessages(prev =>
+      setMessages((prev) =>
         prev.map((msg, idx) =>
           idx === currentIndex ? { ...msg, status: 'processing' } : msg
         )
       );
 
-      // Complete after typing animation
+      // Complete after typing animation - show for 8 seconds (total 10s)
       setTimeout(() => {
-        setMessages(prev =>
+        setMessages((prev) =>
           prev.map((msg, idx) =>
             idx === currentIndex ? { ...msg, status: 'complete' } : msg
           )
         );
-        setCurrentIndex(prev => prev + 1);
-      }, 2000);
-    }, 500);
+        setCurrentIndex((prev) => prev + 1);
+      }, 20000);
+    }, 2000);
 
     return () => clearTimeout(timer);
   }, [currentIndex, messages.length, onComplete]);
@@ -73,11 +81,11 @@ export function LLMSimulationScreen({ icps, onComplete }: LLMSimulationScreenPro
     }
   }, [messages]);
 
-  const queuedCount = messages.filter(m => m.status === 'queued').length;
-  const completeCount = messages.filter(m => m.status === 'complete').length;
+  const queuedCount = messages.filter((m) => m.status === 'queued').length;
+  const completeCount = messages.filter((m) => m.status === 'complete').length;
 
   return (
-    <div className="min-h-screen flex flex-col px-4 py-8 relative overflow-hidden">
+    <div className="h-screen flex flex-col px-4 py-8 relative overflow-hidden">
       {/* Background */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-violet-600/10 rounded-full blur-[100px] animate-pulse"></div>
@@ -98,7 +106,9 @@ export function LLMSimulationScreen({ icps, onComplete }: LLMSimulationScreenPro
             </div>
             <div className="text-sm">
               <span className="text-gray-500">Complete:</span>{' '}
-              <span className="text-green-400 tabular-nums">{completeCount}</span>
+              <span className="text-green-400 tabular-nums">
+                {completeCount}
+              </span>
             </div>
             <div className="text-sm">
               <span className="text-gray-500">Total:</span>{' '}
@@ -110,12 +120,11 @@ export function LLMSimulationScreen({ icps, onComplete }: LLMSimulationScreenPro
         {/* Chat Messages */}
         <div
           ref={scrollRef}
-          className="flex-1 overflow-y-auto space-y-6 pb-6 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent"
-        >
+          className="flex-1 overflow-y-auto space-y-6 pb-6 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
           <AnimatePresence>
             {messages.map((message, index) => {
               if (index > currentIndex) return null;
-              
+
               const config = modelConfig[message.model];
 
               return (
@@ -124,8 +133,7 @@ export function LLMSimulationScreen({ icps, onComplete }: LLMSimulationScreenPro
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3 }}
-                  className="space-y-3"
-                >
+                  className="space-y-3">
                   {/* User Prompt */}
                   <div className="flex justify-end">
                     <div className="max-w-2xl p-4 rounded-2xl bg-white/5 border border-white/10">
@@ -137,15 +145,15 @@ export function LLMSimulationScreen({ icps, onComplete }: LLMSimulationScreenPro
                   <div className="flex items-start gap-3">
                     {/* Model Badge */}
                     <div
-                      className={`flex-shrink-0 px-3 py-1.5 rounded-lg ${config.bgColor} border ${config.borderColor}`}
-                    >
+                      className={`flex-shrink-0 px-3 py-1.5 rounded-lg ${config.bgColor} border ${config.borderColor}`}>
                       <span className={`text-xs ${config.textColor}`}>
                         {config.name}
                       </span>
                     </div>
 
                     {/* Response Content */}
-                    <div className={`flex-1 p-4 rounded-2xl ${config.bgColor} border ${config.borderColor}`}>
+                    <div
+                      className={`flex-1 p-4 rounded-2xl min-h-[500px] ${config.bgColor} border ${config.borderColor}`}>
                       {message.status === 'processing' ? (
                         <div className="space-y-2">
                           <div className="h-3 w-3/4 bg-white/10 rounded animate-pulse"></div>
@@ -153,12 +161,13 @@ export function LLMSimulationScreen({ icps, onComplete }: LLMSimulationScreenPro
                           <div className="h-3 w-2/3 bg-white/10 rounded animate-pulse delay-150"></div>
                         </div>
                       ) : (
-                        <div className="relative">
+                        <div className="relative h-full">
                           <p className="text-sm text-gray-300 leading-relaxed blur-sm select-none">
                             {message.response}
                           </p>
                           <div className="absolute inset-0 flex items-center justify-center">
-                            <div className={`px-3 py-1.5 rounded-lg bg-black/50 border ${config.borderColor} backdrop-blur-sm`}>
+                            <div
+                              className={`px-3 py-1.5 rounded-lg bg-black/50 border ${config.borderColor} backdrop-blur-sm flex items-center justify-center text-center`}>
                               <span className={`text-xs ${config.textColor}`}>
                                 Response captured
                               </span>
