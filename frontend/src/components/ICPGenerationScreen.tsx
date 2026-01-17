@@ -17,7 +17,7 @@ export function ICPGenerationScreen({ onComplete }: ICPGenerationScreenProps) {
     // Reveal ICPs one by one
     defaultIcps.forEach((_, index) => {
       setTimeout(() => {
-        setVisibleICPs(prev => [...prev, defaultIcps[index]]);
+        setVisibleICPs((prev) => [...prev, defaultIcps[index]]);
       }, index * 1200);
     });
   }, []);
@@ -61,7 +61,7 @@ export function ICPGenerationScreen({ onComplete }: ICPGenerationScreenProps) {
             
             return (
               <div
-                key={index}
+                key={icp.id}
                 className="p-6 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500"
                 style={{ animationDelay: `${index * 100}ms` }}
               >
