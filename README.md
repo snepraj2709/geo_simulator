@@ -31,6 +31,41 @@ The MVP demonstrates:
 
 ---
 
+## 📸 Visual Overview
+
+### Complete Workflow
+
+The platform guides you through a 6-step process to analyze your brand's AI visibility:
+
+![Home Page](./public/step_0.png)
+*Enter your website URL to begin the AI brand simulation*
+
+#### Step 1: Website Scraper
+![Website Scraper](./public/step_1_website_scraper.png)
+*Automated crawling and content extraction from your website*
+
+#### Step 2: ICP Generation
+![ICP Generation](./public/step_2_icp_generation.png)
+*AI-generated Ideal Customer Profiles based on your content*
+
+#### Step 3: Prompt Generation
+![Prompt Generation](./public/step_3_prompt_generation.png)
+*Realistic user prompts generated for each persona*
+
+#### Step 4: AI Simulation
+![AI Simulation](./public/step_4_ai_simulation.png)
+*Running prompts across GPT, Claude, Gemini, and Perplexity*
+
+#### Step 5: Intent Classification
+![Intent Classification](./public/step_5_intent_classification.png)
+*Analyzing user intent and funnel stage distribution*
+
+#### Step 6: Report & Analytics
+![Report Analytics](./public/step_6_report_analytics.png)
+*Comprehensive GEO performance report with competitive insights*
+
+---
+
 ## Why This Exists
 
 Traditional SEO measures **page performance**.  
