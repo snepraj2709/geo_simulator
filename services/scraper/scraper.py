@@ -23,6 +23,15 @@ from services.scraper.components.url_queue import URLQueueManager, QueuedURL
 from services.scraper.components.content_parser import ContentParser, ParsedContent
 from services.scraper.components.rate_limiter import ScrapeRateLimiter, RateLimitConfig
 from services.scraper.components.entity_extractor import EntityExtractor, ExtractedEntities
+from services.scraper.components.business_intel import (
+    BusinessIntelligenceExtractor,
+    BusinessIntelligence,
+)
+from services.scraper.components.ner_extractor import (
+    NERExtractor,
+    ExtractedNamedEntities,
+    CompetitorDetector,
+)
 from services.scraper.components.error_handler import (
     CircuitBreaker,
     ErrorCategory,
@@ -70,10 +79,14 @@ class WebsiteScraper:
         self.max_pages = max_pages
         self.rate_limiter = ScrapeRateLimiter(rate_limit_config)
         self.entity_extractor = EntityExtractor()
+        self.business_intel_extractor = BusinessIntelligenceExtractor()
+        self.ner_extractor = NERExtractor()
+        self.competitor_detector = CompetitorDetector(self.ner_extractor)
         self.circuit_breaker = CircuitBreaker()
 
         self._browser: Browser | None = None
         self._playwright = None
+        self._aggregated_content: list[dict] = []  # Store parsed content for final analysis
 
     async def __aenter__(self):
         """Async context manager entry."""
@@ -119,7 +132,8 @@ class WebsiteScraper:
         scrape_type: ScrapeType = ScrapeType.INCREMENTAL,
         existing_hashes: set[str] | None = None,
         progress_callback: Any = None,
-    ) -> tuple[list[PageScrapeResult], ExtractedEntities]:
+        extract_business_intel: bool = True,
+    ) -> tuple[list[PageScrapeResult], ExtractedEntities, BusinessIntelligence | None, ExtractedNamedEntities | None]:
         """
         Scrape a website starting from the given URL.
 
@@ -128,9 +142,10 @@ class WebsiteScraper:
             scrape_type: Type of scrape.
             existing_hashes: Set of already-scraped URL hashes (for incremental).
             progress_callback: Optional callback for progress updates.
+            extract_business_intel: Whether to extract business intelligence.
 
         Returns:
-            Tuple of (list of page results, aggregated entities).
+            Tuple of (list of page results, aggregated entities, business intelligence, named entities).
         """
         if not self._browser:
             await self.start()
@@ -152,6 +167,7 @@ class WebsiteScraper:
 
         results: list[PageScrapeResult] = []
         all_entities = ExtractedEntities()
+        self._aggregated_content = []  # Reset aggregated content
 
         # Create browser context
         context = await self._browser.new_context(
@@ -223,7 +239,16 @@ class WebsiteScraper:
         )
         logger.info("Queue stats: %s", url_queue.stats)
 
-        return results, all_entities
+        # Extract business intelligence from aggregated content
+        business_intel = None
+        named_entities = None
+
+        if extract_business_intel and self._aggregated_content:
+            business_intel, named_entities = self._extract_business_intelligence(
+                domain=domain,
+            )
+
+        return results, all_entities, business_intel, named_entities
 
     async def _scrape_page_with_retry(
         self,
@@ -366,6 +391,18 @@ class WebsiteScraper:
                 parent_url=queued.url,
             )
 
+            # Store parsed content for business intelligence extraction
+            self._aggregated_content.append({
+                "url": queued.url,
+                "html": html,
+                "content_text": parsed.content_text,
+                "title": parsed.title,
+                "meta_description": parsed.meta_description,
+                "headings": parsed.headings,
+                "structured_data": parsed.structured_data,
+                "page_type": parsed.page_type,
+            })
+
             return PageScrapeResult(
                 url=queued.url,
                 success=True,
@@ -473,6 +510,79 @@ class WebsiteScraper:
         # This is a simplified aggregation - in production you'd extract
         # entities from the full parsed content
         pass
+
+    def _extract_business_intelligence(
+        self,
+        domain: str,
+    ) -> tuple[BusinessIntelligence, ExtractedNamedEntities]:
+        """
+        Extract business intelligence from all aggregated content.
+
+        Args:
+            domain: Website domain.
+
+        Returns:
+            Tuple of (BusinessIntelligence, ExtractedNamedEntities).
+        """
+        # Combine all content
+        all_text = []
+        all_headings = []
+        all_structured_data = []
+        homepage_data = None
+
+        for content in self._aggregated_content:
+            all_text.append(content.get("content_text", ""))
+            all_headings.extend(content.get("headings", []))
+            all_structured_data.extend(content.get("structured_data", []))
+
+            # Prioritize homepage for company profile
+            if content.get("page_type") == "homepage" or content.get("url", "").rstrip("/").endswith(domain):
+                homepage_data = content
+
+        combined_text = "\n\n".join(filter(None, all_text))
+
+        # Use homepage data for primary extraction, fall back to first page
+        primary_content = homepage_data or (self._aggregated_content[0] if self._aggregated_content else {})
+
+        # Extract business intelligence
+        business_intel = self.business_intel_extractor.extract(
+            content_text=combined_text,
+            html=primary_content.get("html", ""),
+            headings=all_headings,
+            structured_data=all_structured_data,
+            meta_description=primary_content.get("meta_description"),
+            title=primary_content.get("title"),
+            domain=domain,
+        )
+
+        # Extract named entities from combined text
+        named_entities = self.ner_extractor.extract(combined_text)
+
+        # Detect competitors
+        competitors = self.competitor_detector.detect_competitors(
+            combined_text,
+            own_brand=business_intel.company_profile.name,
+        )
+        business_intel.competitors_mentioned = [c["name"] for c in competitors]
+
+        # Add organizations from NER to competitors if not already present
+        for org in named_entities.get_all_organizations():
+            if org not in business_intel.competitors_mentioned:
+                if business_intel.company_profile.name and org.lower() != business_intel.company_profile.name.lower():
+                    business_intel.competitors_mentioned.append(org)
+
+        # Deduplicate competitors
+        business_intel.competitors_mentioned = list(set(business_intel.competitors_mentioned))[:20]
+
+        logger.info(
+            "Extracted business intel: %d products, %d services, %d value props, %d competitors",
+            len(business_intel.products),
+            len(business_intel.services),
+            len(business_intel.value_propositions),
+            len(business_intel.competitors_mentioned),
+        )
+
+        return business_intel, named_entities
 
     def can_hard_scrape(self, domain: str) -> bool:
         """Check if hard scrape is allowed for domain."""

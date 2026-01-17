@@ -108,12 +108,13 @@ async def _run_scrape(
                             job.scraped_urls.append(result.url)
                         save_job(job)
 
-                # Run scrape
-                results, entities = await scraper.scrape_website(
+                # Run scrape with enhanced business intelligence extraction
+                results, entities, business_intel, named_entities = await scraper.scrape_website(
                     url=website.url,
                     scrape_type=scrape_type,
                     existing_hashes=existing_hashes,
                     progress_callback=on_progress,
+                    extract_business_intel=True,
                 )
 
                 # Record hard scrape
@@ -138,8 +139,15 @@ async def _run_scrape(
             if pages_to_store:
                 await storage.store_pages_batch(pages_to_store)
 
-            # Store analysis if we have entities
-            if entities.products or entities.services:
+            # Store enhanced business intelligence if available
+            if business_intel:
+                await storage.store_business_intelligence(
+                    website_id=website_id,
+                    business_intel=business_intel.to_dict(),
+                    named_entities=named_entities.to_dict() if named_entities else None,
+                )
+            # Fallback to basic entity storage
+            elif entities.products or entities.services:
                 await storage.store_website_analysis(
                     website_id=website_id,
                     industry=entities.industries[0] if entities.industries else None,

@@ -225,6 +225,14 @@ class StorageHandler:
         value_propositions: list[str] | None,
         target_markets: list[str] | None,
         competitors_mentioned: list[str] | None,
+        company_profile: dict[str, Any] | None = None,
+        products_detailed: list[dict[str, Any]] | None = None,
+        services_detailed: list[dict[str, Any]] | None = None,
+        target_audience: list[dict[str, Any]] | None = None,
+        technologies_used: list[str] | None = None,
+        certifications: list[str] | None = None,
+        partnerships: list[str] | None = None,
+        named_entities: dict[str, Any] | None = None,
     ) -> WebsiteAnalysis:
         """
         Store website analysis results.
@@ -237,6 +245,14 @@ class StorageHandler:
             value_propositions: Value props.
             target_markets: Target markets.
             competitors_mentioned: Competitor brands.
+            company_profile: Company profile data.
+            products_detailed: Detailed product offerings.
+            services_detailed: Detailed service offerings.
+            target_audience: Target audience signals.
+            technologies_used: Technologies mentioned.
+            certifications: Certifications found.
+            partnerships: Partnerships mentioned.
+            named_entities: NER extracted entities.
 
         Returns:
             Stored WebsiteAnalysis.
@@ -252,6 +268,14 @@ class StorageHandler:
             value_propositions=value_propositions,
             target_markets=target_markets,
             competitors_mentioned=competitors_mentioned,
+            company_profile=company_profile,
+            products_detailed=products_detailed,
+            services_detailed=services_detailed,
+            target_audience=target_audience,
+            technologies_used=technologies_used,
+            certifications=certifications,
+            partnerships=partnerships,
+            named_entities=named_entities,
             analyzed_at=now,
         )
 
@@ -264,6 +288,14 @@ class StorageHandler:
                 "value_propositions": stmt.excluded.value_propositions,
                 "target_markets": stmt.excluded.target_markets,
                 "competitors_mentioned": stmt.excluded.competitors_mentioned,
+                "company_profile": stmt.excluded.company_profile,
+                "products_detailed": stmt.excluded.products_detailed,
+                "services_detailed": stmt.excluded.services_detailed,
+                "target_audience": stmt.excluded.target_audience,
+                "technologies_used": stmt.excluded.technologies_used,
+                "certifications": stmt.excluded.certifications,
+                "partnerships": stmt.excluded.partnerships,
+                "named_entities": stmt.excluded.named_entities,
                 "analyzed_at": stmt.excluded.analyzed_at,
             },
         ).returning(WebsiteAnalysis)
@@ -272,6 +304,73 @@ class StorageHandler:
         await self.session.commit()
 
         return result.scalar_one()
+
+    async def store_business_intelligence(
+        self,
+        website_id: uuid.UUID,
+        business_intel: dict[str, Any],
+        named_entities: dict[str, Any] | None = None,
+    ) -> WebsiteAnalysis:
+        """
+        Store business intelligence extracted from website.
+
+        This is a higher-level method that takes the output from
+        BusinessIntelligenceExtractor and NERExtractor.
+
+        Args:
+            website_id: Website UUID.
+            business_intel: Business intelligence dict from BusinessIntelligence.to_dict().
+            named_entities: Named entities dict from ExtractedNamedEntities.to_dict().
+
+        Returns:
+            Stored WebsiteAnalysis.
+        """
+        company_profile = business_intel.get("company_profile", {})
+        products = business_intel.get("products", [])
+        services = business_intel.get("services", [])
+        value_props = business_intel.get("value_propositions", [])
+        target_audience = business_intel.get("target_audience", [])
+
+        # Extract primary offerings from products and services
+        primary_offerings = []
+        for p in products[:10]:
+            primary_offerings.append({
+                "type": "product",
+                "name": p.get("name"),
+                "description": p.get("description"),
+            })
+        for s in services[:10]:
+            primary_offerings.append({
+                "type": "service",
+                "name": s.get("name"),
+                "description": s.get("description"),
+            })
+
+        # Extract value proposition statements
+        value_prop_statements = [vp.get("statement") for vp in value_props if vp.get("statement")]
+
+        # Extract target market segments
+        target_markets = list(set(
+            ta.get("segment") for ta in target_audience if ta.get("segment")
+        ))
+
+        return await self.store_website_analysis(
+            website_id=website_id,
+            industry=company_profile.get("industry"),
+            business_model=None,  # TODO: detect from content
+            primary_offerings=primary_offerings,
+            value_propositions=value_prop_statements,
+            target_markets=target_markets,
+            competitors_mentioned=business_intel.get("competitors_mentioned", []),
+            company_profile=company_profile,
+            products_detailed=products,
+            services_detailed=services,
+            target_audience=target_audience,
+            technologies_used=business_intel.get("technologies_used", []),
+            certifications=business_intel.get("certifications", []),
+            partnerships=business_intel.get("partnerships", []),
+            named_entities=named_entities,
+        )
 
     async def get_existing_page_hashes(
         self,

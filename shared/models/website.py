@@ -196,6 +196,16 @@ class WebsiteAnalysis(Base, UUIDMixin):
         nullable=False,
     )
 
+    # Extended business intelligence fields (JSONB for flexibility)
+    company_profile: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    products_detailed: Mapped[list[dict[str, Any]] | None] = mapped_column(JSONB)
+    services_detailed: Mapped[list[dict[str, Any]] | None] = mapped_column(JSONB)
+    target_audience: Mapped[list[dict[str, Any]] | None] = mapped_column(JSONB)
+    technologies_used: Mapped[list[str] | None] = mapped_column(JSONB)
+    certifications: Mapped[list[str] | None] = mapped_column(JSONB)
+    partnerships: Mapped[list[str] | None] = mapped_column(JSONB)
+    named_entities: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+
     # Relationships
     website: Mapped["Website"] = relationship(
         "Website",
