@@ -1,298 +1,220 @@
+
 # LLM Brand Influence Monitor
 
-An AI Visibility & Trust Platform that simulates and audits LLM answers to measure brand presence, competitive positioning, and belief formation across major language models.
+An **AI Visibility & Trust Intelligence Platform** that simulates how Large Language Models (LLMs) perceive, rank, recommend, and implicitly “sell” brands during real user conversations.
 
-## Overview
+This system answers a fundamentally new question that traditional Search Engine Optimization (SEO) tools cannot:
 
-Unlike traditional SEO tools that score pages, this platform **simulates how LLMs perceive and recommend brands** by:
+> **When users ask LLMs for advice, which brands shape their beliefs, decisions, and trust—and why?**
 
-- Modeling question clusters from Ideal Customer Profiles (ICPs)
-- Mapping entity dominance across multiple LLM providers
-- Analyzing LLM answer construction patterns
-- Building knowledge graphs of brand relationships
+---
 
-## Architecture
+## What This Platform Does (In One Line)
+
+It **simulates realistic user conversations with LLMs**, analyzes the responses, and builds a **belief-level visibility graph** showing how brands are *ignored, mentioned, trusted, recommended, or compared* across models.
+
+---
+
+## 🚀 Try the MVP
+
+Experience the platform in action with a live MVP:
+
+FE only: 👉 https://geosimulator.netlify.app/
+
+The MVP demonstrates:
+- User authentication (signup and login)
+- Website submission with automated scraping
+- Ideal Customer Profile (ICP) generation
+- Simulated LLM conversations based on ICPs
+- Brand mention and visibility detection across responses
+- Early competitive substitution insights
+
+---
+
+## Why This Exists
+
+Traditional SEO measures **page performance**.  
+This platform measures **model perception**.
+
+LLMs do not rank pages—they **construct answers**.  
+Those answers shape:
+
+- Which brands feel *trustworthy*
+- Which brands feel *superior*
+- Which brands feel *safe to buy*
+- Which brands disappear entirely
+
+The LLM Brand Influence Monitor treats LLMs as a **new distribution channel**, not a search engine.
+
+---
+
+## Core Capabilities
+
+### 1. LLM Visibility Simulation (Not Prompt Scraping)
+
+Instead of checking static prompts, the system:
+
+- Generates **Ideal Customer Profiles (ICPs)**
+- Simulates **multi-turn conversations**
+- Runs those conversations across multiple LLM providers
+- Observes how brands emerge *organically*
+
+This mirrors real-world user behavior.
+
+---
+
+### 2. Brand Presence State Detection
+
+Every brand in every LLM response is classified into exactly **one dominant state**:
 
 ```
+
+ignored → mentioned → trusted → recommended → compared
+
+```
+
+| State | Meaning |
+|-----|--------|
+| ignored | Brand does not appear at all |
+| mentioned | Brand name appears without authority |
+| trusted | Brand cited as a credible source |
+| recommended | Brand suggested with a call-to-action |
+| compared | Brand evaluated neutrally vs alternatives |
+
+---
+
+### 3. Belief Formation Analysis
+
+LLMs don’t just mention brands—they **install beliefs**.
+
+Each response installs exactly one primary belief type per brand:
+
+```
+
+truth | superiority | outcome | transaction | identity | social_proof
+
+```
+
+Examples:
+- *“This tool is widely trusted”* → social_proof  
+- *“Best performing solution”* → superiority  
+- *“You should sign up”* → transaction  
+
+---
+
+### 4. Competitive Substitution Mapping
+
+When your brand is absent, **who replaces you?**
+
+The platform measures:
+- Share-of-Voice per LLM
+- Brand substitution patterns
+- Competitive gaps by intent and funnel stage
+- Opportunity scores for missing visibility
+
+---
+
+### 5. Knowledge Graph of LLM Perception
+
+All outputs are stored in a **Neo4j knowledge graph**, enabling queries like:
+
+- Which ICPs associate my brand with “outcome” beliefs?
+- Which competitors dominate “decision-stage” prompts?
+- Which concerns trigger substitution away from my brand?
+- Which LLM trusts which brand—and why?
+
+---
+
+## System Architecture Overview
+
+```
+
 ┌─────────────────────────────────────────────────────────────────┐
-│                         Core Services                            │
-├─────────────────────────────────────────────────────────────────┤
+│                           Client Layer                          │
+│  Web Dashboard · API Clients · Webhooks                         │
+└───────────────┬─────────────────────────────────────────────────┘
+                ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                           API Gateway                           │
+│  Auth · Rate Limiting · Routing · Caching                       │
+└───────────────┬─────────────────────────────────────────────────┘
+                ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                       Core Services Layer                       │
+│                                                                 │
 │  Website Scraper → ICP Generator → Conversation Generator       │
 │         ↓               ↓                   ↓                   │
 │  Prompt Classifier → LLM Simulation → Brand Presence Detector   │
 │         ↓               ↓                   ↓                   │
 │  Knowledge Graph Builder → Competitive Substitution Engine      │
+└───────────────┬─────────────────────────────────────────────────┘
+                ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                            Data Layer                           │
+│  PostgreSQL · Neo4j · Redis · Elasticsearch · S3/MinIO          │
 └─────────────────────────────────────────────────────────────────┘
-```
-
-## Tech Stack
-
-- **Backend**: Python 3.11, FastAPI
-- **Task Queue**: Celery + Redis
-- **Databases**: PostgreSQL, Neo4j, Elasticsearch
-- **LLM Providers**: OpenAI, Anthropic, Google, Perplexity
-- **Infrastructure**: Docker, Kubernetes
-
-## Prerequisites
-
-- Python 3.11+
-- Poetry 1.7+
-- Docker & Docker Compose
-- PostgreSQL 15+
-- Redis 7+
-- Neo4j 5+
-
-## Quick Start
-
-### 1. Clone the Repository
-
-```bash
-git clone https://github.com/your-org/geo_simulator.git
-cd geo_simulator
-```
-
-### 2. Set Up Environment
-
-```bash
-# Copy environment template
-cp .env.example .env
-
-# Edit .env with your API keys and configuration
-# At minimum, set your LLM API keys:
-# - OPENAI_API_KEY
-# - ANTHROPIC_API_KEY
-# - GOOGLE_API_KEY (optional)
-# - PERPLEXITY_API_KEY (optional)
-```
-
-### 3. Start with Docker Compose
-
-```bash
-# Start all services
-docker-compose up -d
-
-# View logs
-docker-compose logs -f api
-
-# Check service health
-docker-compose ps
-```
-
-### 4. Or Run Locally with Poetry
-
-```bash
-# Install dependencies
-poetry install
-
-# Run database migrations
-poetry run alembic upgrade head
-
-# Start the API server
-poetry run uvicorn services.api.app.main:app --reload
-
-# In another terminal, start Celery worker
-poetry run celery -A shared.queue.celery_app worker -l info
-
-# In another terminal, start Celery beat (scheduler)
-poetry run celery -A shared.queue.celery_app beat -l info
-```
-
-### 5. Access the Services
-
-- **API Documentation**: http://localhost:8000/docs
-- **API Health Check**: http://localhost:8000/health
-- **Flower (Task Monitor)**: http://localhost:5555
-- **Neo4j Browser**: http://localhost:7474
-- **MinIO Console**: http://localhost:9001
-
-## Project Structure
-
-```
-llm-brand-monitor/
-├── docs/                      # Documentation
-│   ├── ARCHITECTURE.md        # System architecture
-│   ├── DATA_MODEL.md          # Database schemas
-│   ├── API_SPEC.md            # API documentation
-│   └── DEPLOYMENT.md          # Deployment guide
-├── services/                  # Microservices
-│   ├── api/                   # REST API service
-│   │   └── app/
-│   │       ├── main.py        # FastAPI application
-│   │       ├── routers/       # API endpoints
-│   │       ├── schemas/       # Pydantic models
-│   │       └── dependencies.py
-│   ├── scraper/               # Website scraping
-│   ├── simulator/             # LLM simulation
-│   ├── classifier/            # Prompt classification
-│   ├── analyzer/              # Brand analysis
-│   └── graph_builder/         # Knowledge graph
-├── shared/                    # Shared libraries
-│   ├── config.py              # Configuration
-│   ├── db/                    # Database clients
-│   │   ├── postgres.py
-│   │   └── redis.py
-│   ├── graph/                 # Neo4j client
-│   ├── llm/                   # LLM clients
-│   │   ├── openai_client.py
-│   │   ├── anthropic_client.py
-│   │   └── google_client.py
-│   ├── models/                # SQLAlchemy models
-│   ├── queue/                 # Celery configuration
-│   └── utils/                 # Utilities
-├── tests/                     # Test suites
-│   ├── unit/
-│   ├── integration/
-│   └── e2e/
-├── scripts/                   # Utility scripts
-├── docker-compose.yml         # Development setup
-├── docker-compose.prod.yml    # Production overrides
-├── Dockerfile                 # Multi-stage build
-├── pyproject.toml             # Poetry configuration
-└── .env.example               # Environment template
-```
-
-## Configuration
-
-### Environment Variables
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `APP_ENV` | Environment (development/staging/production) | `development` |
-| `DATABASE_URL` | PostgreSQL connection string | Required |
-| `REDIS_URL` | Redis connection string | Required |
-| `NEO4J_URI` | Neo4j connection URI | Required |
-| `OPENAI_API_KEY` | OpenAI API key | Required |
-| `ANTHROPIC_API_KEY` | Anthropic API key | Optional |
-| `GOOGLE_API_KEY` | Google AI API key | Optional |
-| `PERPLEXITY_API_KEY` | Perplexity API key | Optional |
-
-See `.env.example` for all available options.
-
-## API Usage
-
-### Authentication
-
-```bash
-# Register
-curl -X POST http://localhost:8000/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"email": "user@example.com", "password": "password123", "name": "John", "organization_name": "Acme"}'
-
-# Login
-curl -X POST http://localhost:8000/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email": "user@example.com", "password": "password123"}'
-```
-
-### Submit a Website
-
-```bash
-curl -X POST http://localhost:8000/websites \
-  -H "Authorization: Bearer <token>" \
-  -H "Content-Type: application/json" \
-  -d '{"url": "https://example.com", "name": "Example Company"}'
-```
-
-### Run a Simulation
-
-```bash
-curl -X POST http://localhost:8000/websites/<website_id>/simulations \
-  -H "Authorization: Bearer <token>" \
-  -H "Content-Type: application/json" \
-  -d '{"llm_providers": ["openai", "anthropic", "google"]}'
-```
-
-## Development
-
-### Running Tests
-
-```bash
-# Run all tests
-poetry run pytest
-
-# Run with coverage
-poetry run pytest --cov=shared --cov=services
-
-# Run specific test file
-poetry run pytest tests/unit/test_llm_client.py
-```
-
-### Code Quality
-
-```bash
-# Format code
-poetry run black .
-
-# Lint code
-poetry run ruff check .
-
-# Type checking
-poetry run mypy .
-```
-
-### Database Migrations
-
-```bash
-# Create a new migration
-poetry run alembic revision --autogenerate -m "Description"
-
-# Apply migrations
-poetry run alembic upgrade head
-
-# Rollback one migration
-poetry run alembic downgrade -1
-```
-
-## Deployment
-
-### Docker
-
-```bash
-# Build images
-docker-compose build
-
-# Production deployment
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
-```
-
-### Kubernetes
-
-See `docs/DEPLOYMENT.md` for Kubernetes deployment instructions including:
-- Helm charts
-- Resource limits
-- Horizontal Pod Autoscaling
-- Ingress configuration
-
-## Documentation
-
-- [Architecture Overview](docs/ARCHITECTURE.md)
-- [Data Model](docs/DATA_MODEL.md)
-- [API Specification](docs/API_SPEC.md)
-- [Deployment Guide](docs/DEPLOYMENT.md)
-
-## Key Concepts
-
-### Brand Presence States
-
-```
-ignored → mentioned → trusted → recommended → compared
-```
-
-- **ignored**: Brand not mentioned at all
-- **mentioned**: Brand name appears without context
-- **trusted**: Brand cited as authority without sales push
-- **recommended**: Brand with clear call-to-action
-- **compared**: Brand in neutral evaluation context
-
-### Belief Types
-
-```
-truth | superiority | outcome | transaction | identity | social_proof
-```
-
-Each LLM response installs one primary belief type per brand mentioned.
-
-### User Intent Classification
+                ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                     External LLM Integrations                   │
+│  OpenAI · Gemini · Claude · Perplexity                          │
+└─────────────────────────────────────────────────────────────────┘
+
+````
+
+---
+
+## Core Services (Detailed)
+
+### 1. Website Scraper Service
+
+**Purpose:**  
+Extracts structured, semantic understanding of a company’s website.
+
+**Capabilities:**
+- Full-site recursive crawling
+- JavaScript-rendered page support
+- Product and service extraction
+- Structured metadata parsing
+- Hard scrape limits (1/week/domain)
+
+**Tech:** Playwright, Scrapy, BeautifulSoup
+
+---
+
+### 2. ICP Generator Service
+
+**Purpose:**  
+Creates 5 realistic Ideal Customer Profiles from website content.
+
+Each ICP includes:
+- Demographics
+- Job roles
+- Pain points
+- Goals
+- Buying triggers
+- Communication preferences
+
+---
+
+### 3. Conversation Generator Service
+
+**Purpose:**  
+Simulates how ICPs actually talk to LLMs.
+
+**Output:**
+- 10 conversation topics per ICP
+- 5 persistent conversation threads per ICP
+- Multi-turn follow-ups
+- Contextual grounding
+
+Total: **50 realistic conversation flows**
+
+---
+
+### 4. Prompt Classifier Engine
+
+**Purpose:**  
+Adds intent metadata to every prompt.
 
 ```json
 {
@@ -301,13 +223,158 @@ Each LLM response installs one primary belief type per brand mentioned.
   "buying_signal": 0.0 - 1.0,
   "trust_need": 0.0 - 1.0
 }
+````
+
+This allows belief analysis by **intent and funnel stage**.
+
+---
+
+### 5. LLM Simulation Layer
+
+**Purpose:**
+Runs conversations across multiple LLM providers in parallel.
+
+**Supported Providers:**
+
+* OpenAI (GPT-4 / GPT-4o)
+* Google Gemini
+* Anthropic Claude
+* Perplexity
+
+**Captured Signals:**
+
+* Brand mentions
+* Ordering and prominence
+* Framing and context
+* Commercial vs informational tone
+
+---
+
+### 6. Knowledge Graph Builder (Neo4j)
+
+**Node Types:**
+
+* Brand
+* ICP
+* Intent
+* Concern
+* Conversation
+* BeliefType
+
+**Edge Examples:**
+
+* `RANKS_FOR`
+* `INSTALLS_BELIEF`
+* `HAS_CONCERN`
+* `MENTIONS`
+
+This graph is the **system of record** for LLM perception.
+
+---
+
+## Tech Stack
+
+| Layer      | Technology                       |
+| ---------- | -------------------------------- |
+| Backend    | Python 3.11, FastAPI             |
+| Async Jobs | Celery + Redis                   |
+| Databases  | PostgreSQL, Neo4j, Elasticsearch |
+| Storage    | S3 / MinIO                       |
+| Infra      | Docker, Kubernetes               |
+| Monitoring | Prometheus + Grafana             |
+| Logging    | ELK Stack                        |
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+* Python 3.11+
+* Poetry 1.7+
+* Docker & Docker Compose
+* PostgreSQL 15+
+* Redis 7+
+* Neo4j 5+
+
+---
+
+### 1. Clone Repository
+
+```bash
+git clone https://github.com/your-org/geo_simulator.git
+cd geo_simulator
 ```
+
+---
+
+### 2. Environment Setup
+
+```bash
+cp .env.example .env
+```
+
+Minimum required keys:
+
+* `OPENAI_API_KEY`
+* `DATABASE_URL`
+* `REDIS_URL`
+* `NEO4J_URI`
+
+---
+
+### 3. Run with Docker (Recommended)
+
+```bash
+docker-compose up -d
+docker-compose logs -f api
+```
+
+---
+
+### 4. Run Locally (Advanced)
+
+```bash
+poetry install
+poetry run alembic upgrade head
+poetry run uvicorn services.api.app.main:app --reload
+poetry run celery -A shared.queue.celery_app worker -l info
+poetry run celery -A shared.queue.celery_app beat -l info
+```
+
+---
+
+## Service Access
+
+| Service        | URL                                                          |
+| -------------- | ------------------------------------------------------------ |
+| API Docs       | [http://localhost:8000/docs](http://localhost:8000/docs)     |
+| Health Check   | [http://localhost:8000/health](http://localhost:8000/health) |
+| Celery Monitor | [http://localhost:5555](http://localhost:5555)               |
+| Neo4j Browser  | [http://localhost:7474](http://localhost:7474)               |
+| MinIO Console  | [http://localhost:9001](http://localhost:9001)               |
+
+---
+
+## Who This Is For
+
+* SaaS founders optimizing LLM discovery
+* Growth and SEO teams adapting to AI search
+* Brand strategists tracking trust signals
+* Agencies managing AI visibility for clients
+* Researchers studying LLM persuasion dynamics
+
+---
 
 ## License
 
-MIT License - see LICENSE file for details.
+MIT License
 
-## Support
+---
 
-- Issues: [GitHub Issues](https://github.com/your-org/llm-brand-monitor/issues)
-- Documentation: [docs/](docs/)
+## Final Note
+
+This project treats LLMs as **decision-making intermediaries**, not search engines.
+
+If SEO optimized for pages,
+this system optimizes for **beliefs**.
