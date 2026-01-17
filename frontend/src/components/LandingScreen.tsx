@@ -9,12 +9,43 @@ interface LandingScreenProps {
 
 export function LandingScreen({ onStart }: LandingScreenProps) {
   const [url, setUrl] = useState('');
+  const [error, setError] = useState('');
+
+  const normalizeUrl = (input: string): string => {
+    let normalized = input.trim();
+    
+    // Remove protocol if present
+    normalized = normalized.replace(/^(https?:\/\/)?(www\.)?/, '');
+    
+    // Remove trailing slashes
+    normalized = normalized.replace(/\/+$/, '');
+    
+    return normalized;
+  };
+
+  const isValidDomain = (domain: string): boolean => {
+    // Basic domain validation: at least one dot and valid characters
+    const domainRegex = /^[a-zA-Z0-9][a-zA-Z0-9-_.]*\.[a-zA-Z]{2,}$/;
+    return domainRegex.test(domain);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (url.trim()) {
-      onStart(url.trim());
+    setError('');
+    
+    const normalized = normalizeUrl(url);
+    
+    if (!normalized) {
+      setError('Please enter a website URL');
+      return;
     }
+    
+    if (!isValidDomain(normalized)) {
+      setError('Please enter a valid domain (e.g., example.com)');
+      return;
+    }
+    
+    onStart(normalized);
   };
 
   return (
@@ -48,10 +79,13 @@ export function LandingScreen({ onStart }: LandingScreenProps) {
         <form onSubmit={handleSubmit} className="max-w-xl mx-auto mt-12">
           <div className="flex flex-col sm:flex-row gap-3">
             <Input
-              type="url"
+              type="text"
               placeholder="Enter your website URL (e.g., acme.com)"
               value={url}
-              onChange={(e) => setUrl(e.target.value)}
+              onChange={(e) => {
+                setUrl(e.target.value);
+                setError('');
+              }}
               className="flex-1 h-14 bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-violet-500/50 focus:ring-violet-500/20"
               required
             />
@@ -62,6 +96,9 @@ export function LandingScreen({ onStart }: LandingScreenProps) {
               Run AI Brand Simulation
             </Button>
           </div>
+          {error && (
+            <p className="text-red-400 text-sm mt-2 text-left">{error}</p>
+          )}
         </form>
 
         {/* Value props */}
