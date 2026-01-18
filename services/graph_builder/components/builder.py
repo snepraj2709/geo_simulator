@@ -2,7 +2,8 @@
 Graph Builder for Knowledge Graph Builder Service.
 
 Main orchestration engine for building the Neo4j knowledge graph
-from simulation data.
+from simulation data. Includes belief type classification as defined
+in ARCHITECTURE.md.
 """
 
 import time
@@ -15,6 +16,11 @@ from shared.db.neo4j_client import Neo4jClient
 
 from services.graph_builder.components.nodes import NodeManager
 from services.graph_builder.components.edges import EdgeManager
+from services.graph_builder.components.belief_classifier import (
+    BeliefClassifier,
+    BeliefClassification,
+    BeliefAnalysis,
+)
 from services.graph_builder.schemas import (
     BrandNode,
     ICPNode,
@@ -75,16 +81,19 @@ class GraphBuilder:
     - LLM provider recommendations
     """
 
-    def __init__(self, neo4j_client: Neo4jClient):
+    def __init__(self, neo4j_client: Neo4jClient, enable_belief_classification: bool = True):
         """
         Initialize GraphBuilder.
 
         Args:
             neo4j_client: Neo4j client instance.
+            enable_belief_classification: Whether to classify beliefs from response text.
         """
         self.client = neo4j_client
         self.node_manager = NodeManager(neo4j_client)
         self.edge_manager = EdgeManager(neo4j_client)
+        self.belief_classifier = BeliefClassifier() if enable_belief_classification else None
+        self._enable_belief_classification = enable_belief_classification
 
     async def initialize_graph(self) -> bool:
         """
@@ -433,7 +442,14 @@ class GraphBuilder:
             stats.edges_created += count
 
     async def _build_from_responses(self, responses_data: list[dict], stats: BuildStats) -> None:
-        """Build brand nodes and relationships from LLM responses."""
+        """
+        Build brand nodes and relationships from LLM responses.
+
+        Implements belief type classification as defined in ARCHITECTURE.md:
+        - If belief_sold is provided in brand_state, uses that directly
+        - Otherwise, uses BeliefClassifier to classify from response text
+        - Creates INSTALLS_BELIEF relationships per ARCHITECTURE.md diagram
+        """
         brand_nodes = {}  # normalized_name -> BrandNode
         llm_providers = {}  # (name, model) -> LLMProviderNode
 
@@ -447,6 +463,18 @@ class GraphBuilder:
             provider_name = response_data.get("llm_provider", "unknown")
             model_name = response_data.get("llm_model", "unknown")
             prompt_id = str(response_data.get("prompt_id", ""))
+            response_text = response_data.get("response_text", "")
+
+            # Get intent type for context-aware belief classification
+            intent_type = None
+            classification = response_data.get("classification", {})
+            if classification:
+                intent_type_str = classification.get("intent_type")
+                if intent_type_str:
+                    try:
+                        intent_type = IntentTypeEnum(intent_type_str)
+                    except ValueError:
+                        pass
 
             # Track LLM provider
             provider_key = (provider_name, model_name)
@@ -478,6 +506,19 @@ class GraphBuilder:
                 presence = brand_state.get("presence", "mentioned")
                 position = brand_state.get("position_rank")
                 belief = brand_state.get("belief_sold")
+                confidence = brand_state.get("confidence", 0.8)
+
+                # Classify belief if not provided and classifier is enabled
+                if not belief and self._enable_belief_classification and self.belief_classifier and response_text:
+                    belief_classification = self._classify_belief_for_brand(
+                        response_text=response_text,
+                        brand_name=brand_name,
+                        presence_state=PresenceStateEnum(presence) if presence else None,
+                        intent_type=intent_type,
+                    )
+                    if belief_classification:
+                        belief = belief_classification.belief_type.value
+                        confidence = belief_classification.confidence
 
                 # Create RANKS_FOR edge
                 if prompt_id and position:
@@ -490,7 +531,7 @@ class GraphBuilder:
                         count=1,
                     ))
 
-                # Create INSTALLS_BELIEF edge
+                # Create INSTALLS_BELIEF edge (per ARCHITECTURE.md)
                 if belief:
                     installs_belief_edges.append(InstallsBeliefEdge(
                         brand_id=normalized,
@@ -498,7 +539,7 @@ class GraphBuilder:
                         intent_id=prompt_id,
                         llm_provider=provider_name,
                         count=1,
-                        confidence=brand_state.get("confidence", 0.8),
+                        confidence=confidence,
                     ))
 
                 # Create RECOMMENDS or IGNORES edge
@@ -640,6 +681,163 @@ class GraphBuilder:
         )
         result = await self.edge_manager.create_installs_belief(edge)
         return result is not None
+
+    # =========================================================================
+    # BELIEF CLASSIFICATION METHODS
+    # =========================================================================
+
+    def _classify_belief_for_brand(
+        self,
+        response_text: str,
+        brand_name: str,
+        presence_state: PresenceStateEnum | None = None,
+        intent_type: IntentTypeEnum | None = None,
+    ) -> BeliefClassification | None:
+        """
+        Classify belief type for a brand from response text.
+
+        Uses context-aware classification considering:
+        - Text context around brand mention
+        - Presence state (recommended, trusted, etc.)
+        - Intent type (informational, evaluation, decision)
+
+        Args:
+            response_text: Full LLM response text.
+            brand_name: Brand name to analyze.
+            presence_state: Brand's presence state for context.
+            intent_type: Query intent type for context.
+
+        Returns:
+            BeliefClassification or None if no belief detected.
+        """
+        if not self.belief_classifier:
+            return None
+
+        return self.belief_classifier.classify_belief(
+            context=response_text,
+            brand_name=brand_name,
+            presence_state=presence_state,
+            intent_type=intent_type,
+        )
+
+    def classify_beliefs_from_text(
+        self,
+        text: str,
+        brand_name: str | None = None,
+        presence_state: PresenceStateEnum | None = None,
+        intent_type: IntentTypeEnum | None = None,
+    ) -> list[BeliefClassification]:
+        """
+        Classify all belief types from text.
+
+        Public method for standalone belief classification.
+
+        Args:
+            text: Text to analyze.
+            brand_name: Optional brand name for context extraction.
+            presence_state: Optional presence state for score adjustment.
+            intent_type: Optional intent type for score adjustment.
+
+        Returns:
+            List of BeliefClassification sorted by confidence.
+        """
+        if not self.belief_classifier:
+            return []
+
+        return self.belief_classifier.classify_all_beliefs(
+            context=text,
+            presence_state=presence_state,
+            intent_type=intent_type,
+        )
+
+    def analyze_brand_beliefs(
+        self,
+        response_text: str,
+        brand_name: str,
+        presence_state: PresenceStateEnum | None = None,
+        intent_type: IntentTypeEnum | None = None,
+    ) -> BeliefAnalysis:
+        """
+        Perform full belief analysis for a brand.
+
+        Analyzes what beliefs the LLM response installs about a brand,
+        implementing the belief type classification from ARCHITECTURE.md.
+
+        Args:
+            response_text: Full LLM response text.
+            brand_name: Brand name to analyze.
+            presence_state: Brand's presence state.
+            intent_type: Query intent type.
+
+        Returns:
+            BeliefAnalysis with primary and all detected beliefs.
+        """
+        if not self.belief_classifier:
+            return BeliefAnalysis(
+                brand_name=brand_name,
+                primary_belief=None,
+                presence_state=presence_state,
+                intent_type=intent_type,
+            )
+
+        return self.belief_classifier.analyze_brand_beliefs(
+            response_text=response_text,
+            brand_name=brand_name,
+            presence_state=presence_state,
+            intent_type=intent_type,
+        )
+
+    async def classify_and_store_beliefs(
+        self,
+        response_text: str,
+        brand_name: str,
+        intent_id: str | None = None,
+        llm_provider: str | None = None,
+        presence_state: PresenceStateEnum | None = None,
+        intent_type: IntentTypeEnum | None = None,
+    ) -> list[InstallsBeliefEdge]:
+        """
+        Classify beliefs from text and create INSTALLS_BELIEF edges.
+
+        Convenience method that combines classification and storage.
+
+        Args:
+            response_text: LLM response text to analyze.
+            brand_name: Brand being analyzed.
+            intent_id: Optional intent ID.
+            llm_provider: Optional LLM provider.
+            presence_state: Optional presence state.
+            intent_type: Optional intent type.
+
+        Returns:
+            List of InstallsBeliefEdge created.
+        """
+        beliefs = self.classify_beliefs_from_text(
+            text=response_text,
+            brand_name=brand_name,
+            presence_state=presence_state,
+            intent_type=intent_type,
+        )
+
+        edges = []
+        normalized_name = brand_name.lower().strip()
+
+        for belief_classification in beliefs:
+            if belief_classification.confidence >= 0.3:  # Threshold for storage
+                edge = InstallsBeliefEdge(
+                    brand_id=normalized_name,
+                    belief_type=belief_classification.belief_type,
+                    intent_id=intent_id,
+                    llm_provider=llm_provider,
+                    count=1,
+                    confidence=belief_classification.confidence,
+                )
+                edges.append(edge)
+
+                # Store in graph
+                await self.edge_manager.create_installs_belief(edge)
+
+        return edges
 
     # =========================================================================
     # CLEANUP METHODS

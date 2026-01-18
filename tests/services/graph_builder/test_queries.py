@@ -325,6 +325,237 @@ class TestQueryBuilderIntents:
         assert result[0]["brand_count"] == 5
 
 
+class TestQueryBuilderBeliefAggregation:
+    """Tests for enhanced belief aggregation queries."""
+
+    @pytest.mark.asyncio
+    async def test_get_belief_by_funnel_stage(self, mock_neo4j_client):
+        """Test getting belief distribution by funnel stage."""
+        query = QueryBuilder(mock_neo4j_client)
+
+        mock_neo4j_client.set_query_results([
+            [
+                {
+                    "funnel_stage": "awareness",
+                    "beliefs": [
+                        {"belief_type": "truth", "count": 10, "confidence": 0.7, "brand_count": 5},
+                        {"belief_type": "social_proof", "count": 8, "confidence": 0.8, "brand_count": 4},
+                    ]
+                },
+                {
+                    "funnel_stage": "consideration",
+                    "beliefs": [
+                        {"belief_type": "outcome", "count": 15, "confidence": 0.85, "brand_count": 6},
+                        {"belief_type": "superiority", "count": 12, "confidence": 0.75, "brand_count": 5},
+                    ]
+                },
+            ]
+        ])
+
+        result = await query.get_belief_by_funnel_stage()
+
+        assert "awareness" in result
+        assert "consideration" in result
+        assert len(result["awareness"]["beliefs"]) == 2
+        assert result["awareness"]["total_count"] == 18
+
+    @pytest.mark.asyncio
+    async def test_get_belief_by_funnel_stage_with_brand_filter(self, mock_neo4j_client):
+        """Test getting belief by funnel stage filtered by brand."""
+        query = QueryBuilder(mock_neo4j_client)
+
+        mock_neo4j_client.set_query_results([
+            [
+                {
+                    "funnel_stage": "decision",
+                    "beliefs": [
+                        {"belief_type": "transaction", "count": 5, "confidence": 0.9, "brand_count": 1},
+                    ]
+                }
+            ]
+        ])
+
+        result = await query.get_belief_by_funnel_stage(brand_name="TestBrand")
+
+        assert "decision" in result
+        assert len(result["decision"]["beliefs"]) == 1
+
+    @pytest.mark.asyncio
+    async def test_get_brand_belief_profile(self, mock_neo4j_client):
+        """Test getting comprehensive belief profile for a brand."""
+        query = QueryBuilder(mock_neo4j_client)
+
+        # Mock all the queries used by get_brand_belief_profile
+        mock_neo4j_client.set_query_results([
+            # get_belief_map
+            [
+                {"belief_type": "outcome", "total_count": 10, "avg_confidence": 0.85},
+                {"belief_type": "superiority", "total_count": 5, "avg_confidence": 0.7},
+            ],
+            # get_belief_by_funnel_stage
+            [
+                {
+                    "funnel_stage": "consideration",
+                    "beliefs": [
+                        {"belief_type": "outcome", "count": 10, "confidence": 0.85, "brand_count": 1},
+                    ]
+                }
+            ],
+            # effectiveness query
+            [
+                {"belief_type": "outcome", "recommendation_with_belief": 8, "avg_confidence": 0.9},
+            ],
+            # consistency query
+            [
+                {
+                    "belief_type": "outcome",
+                    "provider_count": 2,
+                    "by_provider": [
+                        {"provider": "openai", "count": 6, "confidence": 0.85},
+                        {"provider": "anthropic", "count": 4, "confidence": 0.9},
+                    ]
+                }
+            ],
+        ])
+
+        result = await query.get_brand_belief_profile("TestBrand")
+
+        assert result["brand_name"] == "TestBrand"
+        assert "overall_beliefs" in result
+        assert "by_funnel_stage" in result
+        assert "effectiveness" in result
+        assert "consistency_across_providers" in result
+
+    @pytest.mark.asyncio
+    async def test_get_belief_trends(self, mock_neo4j_client):
+        """Test getting belief trends across brands."""
+        query = QueryBuilder(mock_neo4j_client)
+
+        mock_neo4j_client.set_query_results([
+            [
+                {
+                    "belief_type": "outcome",
+                    "total_installations": 100,
+                    "avg_confidence": 0.8,
+                    "brand_count": 20,
+                    "provider_count": 3,
+                    "sample_brands": ["Brand1", "Brand2", "Brand3"],
+                },
+                {
+                    "belief_type": "superiority",
+                    "total_installations": 50,
+                    "avg_confidence": 0.75,
+                    "brand_count": 15,
+                    "provider_count": 3,
+                    "sample_brands": ["Brand1", "Brand4"],
+                },
+            ]
+        ])
+
+        result = await query.get_belief_trends()
+
+        assert "trends" in result
+        assert len(result["trends"]) == 2
+        assert result["total_installations"] == 150
+        # Check percentage calculation
+        assert result["trends"][0]["percentage"] == 66.7  # 100/150 * 100
+
+    @pytest.mark.asyncio
+    async def test_get_belief_trends_with_filters(self, mock_neo4j_client):
+        """Test getting belief trends with brand and provider filters."""
+        query = QueryBuilder(mock_neo4j_client)
+
+        mock_neo4j_client.set_query_results([
+            [
+                {
+                    "belief_type": "outcome",
+                    "total_installations": 25,
+                    "avg_confidence": 0.85,
+                    "brand_count": 2,
+                    "provider_count": 1,
+                    "sample_brands": ["Brand1", "Brand2"],
+                },
+            ]
+        ])
+
+        result = await query.get_belief_trends(
+            brand_names=["Brand1", "Brand2"],
+            llm_providers=["openai"]
+        )
+
+        assert result["filters"]["brand_names"] == ["Brand1", "Brand2"]
+        assert result["filters"]["llm_providers"] == ["openai"]
+
+    @pytest.mark.asyncio
+    async def test_get_belief_effectiveness_analysis(self, mock_neo4j_client):
+        """Test getting belief effectiveness analysis."""
+        query = QueryBuilder(mock_neo4j_client)
+
+        mock_neo4j_client.set_query_results([
+            [
+                {
+                    "belief_type": "outcome",
+                    "brand_count": 10,
+                    "total_installations": 50,
+                    "avg_belief_confidence": 0.85,
+                    "avg_position": 1.5,
+                    "recommendations": 40,
+                    "first_positions": 20,
+                    "recommendation_rate": 80.0,
+                    "first_position_rate": 40.0,
+                },
+                {
+                    "belief_type": "superiority",
+                    "brand_count": 8,
+                    "total_installations": 30,
+                    "avg_belief_confidence": 0.7,
+                    "avg_position": 2.0,
+                    "recommendations": 20,
+                    "first_positions": 10,
+                    "recommendation_rate": 66.7,
+                    "first_position_rate": 33.3,
+                },
+            ]
+        ])
+
+        result = await query.get_belief_effectiveness_analysis()
+
+        assert "effectiveness" in result
+        assert len(result["effectiveness"]) == 2
+        assert result["effectiveness"][0]["belief_type"] == "outcome"
+        assert result["effectiveness"][0]["recommendation_rate"] == 80.0
+
+    @pytest.mark.asyncio
+    async def test_get_belief_effectiveness_with_filters(self, mock_neo4j_client):
+        """Test belief effectiveness with type and provider filters."""
+        query = QueryBuilder(mock_neo4j_client)
+
+        mock_neo4j_client.set_query_results([
+            [
+                {
+                    "belief_type": "outcome",
+                    "brand_count": 5,
+                    "total_installations": 20,
+                    "avg_belief_confidence": 0.9,
+                    "avg_position": 1.2,
+                    "recommendations": 18,
+                    "first_positions": 15,
+                    "recommendation_rate": 90.0,
+                    "first_position_rate": 75.0,
+                },
+            ]
+        ])
+
+        result = await query.get_belief_effectiveness_analysis(
+            belief_type="outcome",
+            llm_provider="openai"
+        )
+
+        assert result["filters"]["belief_type"] == "outcome"
+        assert result["filters"]["llm_provider"] == "openai"
+        assert len(result["effectiveness"]) == 1
+
+
 class TestQueryBuilderStats:
     """Tests for graph statistics queries."""
 

@@ -161,6 +161,334 @@ class QueryBuilder:
 
         return comparison
 
+    async def get_belief_by_funnel_stage(
+        self,
+        brand_name: str | None = None,
+        llm_provider: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Get belief distribution segmented by funnel stage.
+
+        Shows which belief types are most effective at each stage of the buyer journey.
+
+        Args:
+            brand_name: Optional brand name filter.
+            llm_provider: Optional LLM provider filter.
+
+        Returns:
+            Belief distribution per funnel stage.
+        """
+        query = """
+        MATCH (b:Brand)-[r:INSTALLS_BELIEF]->(bt:BeliefType)
+        MATCH (i:Intent {id: r.intent_id})
+        WHERE ($normalized_name IS NULL OR b.normalized_name = $normalized_name)
+        AND ($llm_provider IS NULL OR r.llm_provider = $llm_provider)
+        WITH i.funnel_stage as funnel_stage,
+             bt.type as belief_type,
+             sum(r.count) as total_count,
+             avg(r.confidence) as avg_confidence,
+             count(DISTINCT b) as brand_count
+        RETURN funnel_stage,
+               collect({
+                   belief_type: belief_type,
+                   count: total_count,
+                   confidence: avg_confidence,
+                   brand_count: brand_count
+               }) as beliefs
+        ORDER BY CASE funnel_stage
+            WHEN 'awareness' THEN 1
+            WHEN 'consideration' THEN 2
+            WHEN 'decision' THEN 3
+            WHEN 'retention' THEN 4
+            ELSE 5
+        END
+        """
+
+        result = await self.client.execute_query(
+            query,
+            {
+                "normalized_name": brand_name.lower().strip() if brand_name else None,
+                "llm_provider": llm_provider,
+            }
+        )
+
+        funnel_data = {}
+        if result:
+            for row in result:
+                stage = row["funnel_stage"] or "unknown"
+                funnel_data[stage] = {
+                    "beliefs": [
+                        {
+                            "belief_type": b["belief_type"],
+                            "count": b["count"],
+                            "confidence": round(b["confidence"], 3) if b["confidence"] else 0,
+                            "brand_count": b["brand_count"],
+                        }
+                        for b in row["beliefs"]
+                    ],
+                    "total_count": sum(b["count"] for b in row["beliefs"]),
+                }
+
+        return funnel_data
+
+    async def get_brand_belief_profile(
+        self,
+        brand_name: str,
+        llm_provider: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Get comprehensive belief profile for a brand.
+
+        Combines belief map with funnel stage breakdown and effectiveness metrics.
+
+        Args:
+            brand_name: Brand name to analyze.
+            llm_provider: Optional LLM provider filter.
+
+        Returns:
+            Complete belief profile with multiple dimensions.
+        """
+        normalized = brand_name.lower().strip()
+
+        # Get overall belief distribution
+        belief_map = await self.get_belief_map(brand_name, llm_provider)
+
+        # Get belief by funnel stage
+        funnel_beliefs = await self.get_belief_by_funnel_stage(brand_name, llm_provider)
+
+        # Get belief effectiveness (correlation with recommendations)
+        effectiveness_query = """
+        MATCH (b:Brand {normalized_name: $normalized_name})-[r:INSTALLS_BELIEF]->(bt:BeliefType)
+        MATCH (llm:LLMProvider)-[rec:RECOMMENDS]->(b)
+        WHERE r.intent_id = rec.intent_id
+        AND ($llm_provider IS NULL OR r.llm_provider = $llm_provider)
+        WITH bt.type as belief_type,
+             count(*) as recommendation_with_belief,
+             avg(r.confidence) as avg_confidence
+        RETURN belief_type,
+               recommendation_with_belief,
+               avg_confidence
+        ORDER BY recommendation_with_belief DESC
+        """
+
+        effectiveness_result = await self.client.execute_query(
+            effectiveness_query,
+            {"normalized_name": normalized, "llm_provider": llm_provider}
+        )
+
+        effectiveness = []
+        if effectiveness_result:
+            for row in effectiveness_result:
+                effectiveness.append({
+                    "belief_type": row["belief_type"],
+                    "recommendations_with_belief": row["recommendation_with_belief"],
+                    "avg_confidence": round(row["avg_confidence"], 3) if row["avg_confidence"] else 0,
+                })
+
+        # Get belief consistency across providers
+        consistency_query = """
+        MATCH (b:Brand {normalized_name: $normalized_name})-[r:INSTALLS_BELIEF]->(bt:BeliefType)
+        WITH bt.type as belief_type,
+             r.llm_provider as provider,
+             sum(r.count) as count,
+             avg(r.confidence) as confidence
+        RETURN belief_type,
+               collect({provider: provider, count: count, confidence: confidence}) as by_provider,
+               count(DISTINCT provider) as provider_count
+        ORDER BY provider_count DESC
+        """
+
+        consistency_result = await self.client.execute_query(
+            consistency_query,
+            {"normalized_name": normalized}
+        )
+
+        consistency = []
+        if consistency_result:
+            for row in consistency_result:
+                consistency.append({
+                    "belief_type": row["belief_type"],
+                    "provider_count": row["provider_count"],
+                    "by_provider": [
+                        {
+                            "provider": p["provider"],
+                            "count": p["count"],
+                            "confidence": round(p["confidence"], 3) if p["confidence"] else 0,
+                        }
+                        for p in row["by_provider"]
+                    ],
+                })
+
+        return {
+            "brand_name": brand_name,
+            "overall_beliefs": belief_map.beliefs,
+            "total_occurrences": belief_map.total_occurrences,
+            "by_funnel_stage": funnel_beliefs,
+            "effectiveness": effectiveness,
+            "consistency_across_providers": consistency,
+        }
+
+    async def get_belief_trends(
+        self,
+        brand_names: list[str] | None = None,
+        llm_providers: list[str] | None = None,
+    ) -> dict[str, Any]:
+        """
+        Get belief trends across brands and LLM providers.
+
+        Identifies which beliefs are most commonly installed overall.
+
+        Args:
+            brand_names: Optional list of brands to analyze.
+            llm_providers: Optional list of providers to include.
+
+        Returns:
+            Trend data showing belief patterns.
+        """
+        query = """
+        MATCH (b:Brand)-[r:INSTALLS_BELIEF]->(bt:BeliefType)
+        WHERE ($brand_names IS NULL OR b.normalized_name IN $brand_names)
+        AND ($llm_providers IS NULL OR r.llm_provider IN $llm_providers)
+        WITH bt.type as belief_type,
+             sum(r.count) as total_installations,
+             avg(r.confidence) as avg_confidence,
+             count(DISTINCT b) as brand_count,
+             count(DISTINCT r.llm_provider) as provider_count,
+             collect(DISTINCT b.name)[0..5] as sample_brands
+        RETURN belief_type,
+               total_installations,
+               avg_confidence,
+               brand_count,
+               provider_count,
+               sample_brands
+        ORDER BY total_installations DESC
+        """
+
+        normalized_names = [n.lower().strip() for n in brand_names] if brand_names else None
+
+        result = await self.client.execute_query(
+            query,
+            {
+                "brand_names": normalized_names,
+                "llm_providers": llm_providers,
+            }
+        )
+
+        trends = []
+        total = 0
+        if result:
+            for row in result:
+                trends.append({
+                    "belief_type": row["belief_type"],
+                    "total_installations": row["total_installations"],
+                    "avg_confidence": round(row["avg_confidence"], 3) if row["avg_confidence"] else 0,
+                    "brand_count": row["brand_count"],
+                    "provider_count": row["provider_count"],
+                    "sample_brands": row["sample_brands"],
+                })
+                total += row["total_installations"]
+
+        # Calculate percentages
+        for trend in trends:
+            trend["percentage"] = round(trend["total_installations"] / total * 100, 1) if total > 0 else 0
+
+        return {
+            "trends": trends,
+            "total_installations": total,
+            "filters": {
+                "brand_names": brand_names,
+                "llm_providers": llm_providers,
+            },
+        }
+
+    async def get_belief_effectiveness_analysis(
+        self,
+        belief_type: str | None = None,
+        llm_provider: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Analyze which beliefs correlate with better brand positioning.
+
+        Compares belief installations with recommendation rates and positions.
+
+        Args:
+            belief_type: Optional specific belief type to analyze.
+            llm_provider: Optional LLM provider filter.
+
+        Returns:
+            Effectiveness metrics for each belief type.
+        """
+        query = """
+        MATCH (b:Brand)-[belief:INSTALLS_BELIEF]->(bt:BeliefType)
+        WHERE ($belief_type IS NULL OR bt.type = $belief_type)
+        AND ($llm_provider IS NULL OR belief.llm_provider = $llm_provider)
+
+        // Get ranking info for same brand/intent
+        OPTIONAL MATCH (b)-[rank:RANKS_FOR]->(i:Intent {id: belief.intent_id})
+        WHERE rank.llm_provider = belief.llm_provider
+
+        WITH bt.type as belief_type,
+             b.name as brand_name,
+             belief.confidence as belief_confidence,
+             rank.position as position,
+             rank.presence as presence,
+             belief.count as belief_count
+
+        WITH belief_type,
+             count(DISTINCT brand_name) as brand_count,
+             sum(belief_count) as total_installations,
+             avg(belief_confidence) as avg_belief_confidence,
+             avg(CASE WHEN position IS NOT NULL THEN position END) as avg_position,
+             sum(CASE WHEN presence = 'recommended' THEN 1 ELSE 0 END) as recommendations,
+             sum(CASE WHEN position = 1 THEN 1 ELSE 0 END) as first_positions
+
+        RETURN belief_type,
+               brand_count,
+               total_installations,
+               avg_belief_confidence,
+               avg_position,
+               recommendations,
+               first_positions,
+               CASE WHEN total_installations > 0
+                    THEN toFloat(recommendations) / total_installations * 100
+                    ELSE 0 END as recommendation_rate,
+               CASE WHEN total_installations > 0
+                    THEN toFloat(first_positions) / total_installations * 100
+                    ELSE 0 END as first_position_rate
+        ORDER BY recommendation_rate DESC
+        """
+
+        result = await self.client.execute_query(
+            query,
+            {
+                "belief_type": belief_type,
+                "llm_provider": llm_provider,
+            }
+        )
+
+        effectiveness = []
+        if result:
+            for row in result:
+                effectiveness.append({
+                    "belief_type": row["belief_type"],
+                    "brand_count": row["brand_count"],
+                    "total_installations": row["total_installations"],
+                    "avg_confidence": round(row["avg_belief_confidence"], 3) if row["avg_belief_confidence"] else 0,
+                    "avg_position": round(row["avg_position"], 2) if row["avg_position"] else None,
+                    "recommendations": row["recommendations"],
+                    "first_positions": row["first_positions"],
+                    "recommendation_rate": round(row["recommendation_rate"], 1) if row["recommendation_rate"] else 0,
+                    "first_position_rate": round(row["first_position_rate"], 1) if row["first_position_rate"] else 0,
+                })
+
+        return {
+            "effectiveness": effectiveness,
+            "filters": {
+                "belief_type": belief_type,
+                "llm_provider": llm_provider,
+            },
+        }
+
     # =========================================================================
     # CO-MENTION QUERIES
     # =========================================================================
