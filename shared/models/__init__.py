@@ -38,6 +38,11 @@ from shared.models.conversation import ConversationSequence, Prompt, PromptClass
 from shared.models.simulation import LLMResponse, SimulationRun
 from shared.models.brand import Brand, LLMAnswerBeliefMap, LLMBrandState
 from shared.models.competitive import CompetitorRelationship, ShareOfVoice, SubstitutionPattern
+from shared.models.aggregated_metrics import (
+    AggregatedSimulationMetrics,
+    BrandMentionAnalysis,
+    IntentRankingResult,
+)
 
 __all__ = [
     # Mixins
@@ -82,4 +87,8 @@ __all__ = [
     "CompetitorRelationship",
     "ShareOfVoice",
     "SubstitutionPattern",
+    # Aggregated metrics models
+    "AggregatedSimulationMetrics",
+    "BrandMentionAnalysis",
+    "IntentRankingResult",
 ]

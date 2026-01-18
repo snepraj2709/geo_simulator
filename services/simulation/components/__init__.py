@@ -8,6 +8,7 @@ Components that implement the LLM Simulation Layer:
 - Response Aggregator & Normalizer
 - Brand Extractor
 - Rate Limiter
+- Advanced Analyzers (NER, Intent, Priority, Framing)
 """
 
 from services.simulation.components.prompt_queue import PromptQueue
@@ -16,6 +17,18 @@ from services.simulation.components.adapters import LLMAdapterFactory, BaseLLMAd
 from services.simulation.components.aggregator import ResponseAggregator, ResponseNormalizer
 from services.simulation.components.brand_extractor import BrandExtractor
 from services.simulation.components.rate_limiter import SimulationRateLimiter, TokenBucket
+from services.simulation.components.analyzers import (
+    EnhancedBrandExtractor,
+    IntentRankingAnalyzer,
+    PriorityOrderDetector,
+    ContextualFramingAnalyzer,
+    EnhancedBrandExtraction,
+    IntentAnalysisResult,
+    PriorityAnalysis,
+    FramingAnalysis,
+    FramingType,
+    PrioritySignal,
+)
 from services.simulation.schemas import PromptQueueItem
 
 __all__ = [
@@ -29,4 +42,16 @@ __all__ = [
     "BrandExtractor",
     "SimulationRateLimiter",
     "TokenBucket",
+    # Advanced analyzers
+    "EnhancedBrandExtractor",
+    "IntentRankingAnalyzer",
+    "PriorityOrderDetector",
+    "ContextualFramingAnalyzer",
+    # Analysis result types
+    "EnhancedBrandExtraction",
+    "IntentAnalysisResult",
+    "PriorityAnalysis",
+    "FramingAnalysis",
+    "FramingType",
+    "PrioritySignal",
 ]

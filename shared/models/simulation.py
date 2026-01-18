@@ -21,6 +21,7 @@ if TYPE_CHECKING:
     from shared.models.website import Website
     from shared.models.conversation import Prompt
     from shared.models.brand import LLMBrandState
+    from shared.models.aggregated_metrics import AggregatedSimulationMetrics
 
 
 class SimulationRun(Base, UUIDMixin, TimestampMixin):
@@ -65,6 +66,12 @@ class SimulationRun(Base, UUIDMixin, TimestampMixin):
     responses: Mapped[list["LLMResponse"]] = relationship(
         "LLMResponse",
         back_populates="simulation_run",
+        cascade="all, delete-orphan",
+    )
+    aggregated_metrics: Mapped["AggregatedSimulationMetrics | None"] = relationship(
+        "AggregatedSimulationMetrics",
+        back_populates="simulation_run",
+        uselist=False,
         cascade="all, delete-orphan",
     )
 

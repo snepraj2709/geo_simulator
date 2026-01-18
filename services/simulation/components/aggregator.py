@@ -3,13 +3,17 @@ Response Aggregator & Normalizer.
 
 Aggregates and normalizes responses from multiple LLM providers,
 providing unified access to response data for analysis.
+Includes PostgreSQL storage integration for persisting metrics.
 """
 
 import uuid
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any
+from decimal import Decimal
+from typing import Any, TYPE_CHECKING
+
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared.utils.logging import get_logger
 
@@ -21,6 +25,14 @@ from services.simulation.schemas import (
     ProviderMetrics,
     SimulationMetrics,
 )
+
+if TYPE_CHECKING:
+    from services.simulation.components.analyzers import (
+        EnhancedBrandExtraction,
+        IntentAnalysisResult,
+        PriorityAnalysis,
+        FramingAnalysis,
+    )
 
 logger = get_logger(__name__)
 
@@ -365,6 +377,198 @@ class ResponseAggregator:
         self._all_responses.clear()
         self._provider_stats.clear()
         self._brand_stats.clear()
+
+    async def store_aggregated_metrics(self, db: AsyncSession) -> uuid.UUID:
+        """
+        Store aggregated metrics to PostgreSQL.
+
+        Args:
+            db: Database session.
+
+        Returns:
+            UUID of the created AggregatedSimulationMetrics record.
+        """
+        from shared.models.aggregated_metrics import AggregatedSimulationMetrics
+
+        metrics = self.get_simulation_metrics()
+        stats = self.get_statistics()
+
+        # Calculate average latency and tokens
+        total_latency = 0
+        total_tokens = 0
+        count = 0
+
+        for response in self._all_responses:
+            total_latency += response.latency_ms
+            total_tokens += response.tokens_used
+            count += 1
+
+        avg_latency = Decimal(total_latency / count) if count > 0 else Decimal(0)
+        avg_tokens = Decimal(total_tokens / count) if count > 0 else Decimal(0)
+
+        # Build provider metrics JSONB
+        provider_metrics_json = {
+            pm.provider.value: {
+                "total_queries": pm.total_queries,
+                "successful_queries": pm.successful_queries,
+                "failed_queries": pm.failed_queries,
+                "avg_latency_ms": pm.avg_latency_ms,
+                "avg_tokens": pm.avg_tokens,
+                "total_tokens": pm.total_tokens,
+                "brands_mentioned": pm.brands_mentioned,
+            }
+            for pm in metrics.provider_metrics
+        }
+
+        # Build brand rankings JSONB
+        brand_rankings_json = {
+            bm.normalized_name: {
+                "brand_name": bm.brand_name,
+                "total_mentions": bm.total_mentions,
+                "mentions_by_provider": bm.mentions_by_provider,
+                "avg_position": bm.avg_position,
+                "recommendation_rate": bm.recommendation_rate,
+            }
+            for bm in metrics.brand_metrics[:50]  # Top 50 brands
+        }
+
+        # Build belief distribution
+        belief_dist = defaultdict(int)
+        presence_dist = defaultdict(int)
+
+        for bm in metrics.brand_metrics:
+            for belief, count in bm.belief_distribution.items():
+                belief_dist[belief] += count
+            for presence, count in bm.presence_distribution.items():
+                presence_dist[presence] += count
+
+        aggregated = AggregatedSimulationMetrics(
+            simulation_run_id=self.simulation_id,
+            total_responses=stats["total_responses"],
+            total_brands_found=stats["total_unique_brands"],
+            total_prompts_processed=stats["total_prompts"],
+            avg_latency_ms=avg_latency,
+            avg_tokens_used=avg_tokens,
+            total_tokens_used=total_tokens,
+            provider_metrics=provider_metrics_json,
+            intent_distribution=metrics.intent_distribution,
+            funnel_distribution={},  # Populated by analyzer
+            brand_rankings=brand_rankings_json,
+            belief_distribution=dict(belief_dist),
+            presence_distribution=dict(presence_dist),
+            computed_at=datetime.utcnow(),
+        )
+
+        db.add(aggregated)
+        await db.flush()
+
+        logger.info(
+            "Stored aggregated metrics",
+            simulation_id=str(self.simulation_id),
+            metrics_id=str(aggregated.id),
+        )
+
+        return aggregated.id
+
+    async def store_brand_mention_analysis(
+        self,
+        db: AsyncSession,
+        llm_response_id: uuid.UUID,
+        brand_id: uuid.UUID,
+        extraction: "EnhancedBrandExtraction",
+        intent_result: "IntentAnalysisResult | None" = None,
+        priority_analysis: "PriorityAnalysis | None" = None,
+        framing_analysis: "FramingAnalysis | None" = None,
+    ) -> uuid.UUID:
+        """
+        Store detailed brand mention analysis to PostgreSQL.
+
+        Args:
+            db: Database session.
+            llm_response_id: UUID of the LLM response.
+            brand_id: UUID of the brand.
+            extraction: Enhanced brand extraction data.
+            intent_result: Optional intent analysis result.
+            priority_analysis: Optional priority analysis.
+            framing_analysis: Optional framing analysis.
+
+        Returns:
+            UUID of the created BrandMentionAnalysis record.
+        """
+        from shared.models.aggregated_metrics import BrandMentionAnalysis
+
+        analysis = BrandMentionAnalysis(
+            llm_response_id=llm_response_id,
+            brand_id=brand_id,
+            extraction_method=extraction.extraction_method,
+            position_in_response=extraction.position_in_response,
+            mention_rank=extraction.mention_rank,
+            mention_count=extraction.mention_count,
+            context_snippet=extraction.context_snippet[:1000] if extraction.context_snippet else None,
+            ner_entities=extraction.ner_entities if extraction.ner_entities else None,
+        )
+
+        # Add intent analysis if available
+        if intent_result:
+            analysis.intent_type = intent_result.primary_intent
+            analysis.intent_confidence = Decimal(str(intent_result.confidence))
+
+        # Add priority analysis if available
+        if priority_analysis:
+            analysis.priority_indicators = {
+                "signals": [s.value for s in priority_analysis.priority_signals],
+                "signal_scores": priority_analysis.signal_scores,
+                "overall_score": priority_analysis.overall_priority_score,
+            }
+
+        # Add framing analysis if available
+        if framing_analysis:
+            analysis.contextual_framing = framing_analysis.framing_type.value
+            analysis.framing_score = Decimal(str(framing_analysis.framing_score))
+
+        db.add(analysis)
+        await db.flush()
+
+        return analysis.id
+
+    async def store_intent_ranking_result(
+        self,
+        db: AsyncSession,
+        llm_response_id: uuid.UUID,
+        intent_result: "IntentAnalysisResult",
+    ) -> uuid.UUID:
+        """
+        Store intent ranking result to PostgreSQL.
+
+        Args:
+            db: Database session.
+            llm_response_id: UUID of the LLM response.
+            intent_result: Intent analysis result.
+
+        Returns:
+            UUID of the created IntentRankingResult record.
+        """
+        from shared.models.aggregated_metrics import IntentRankingResult
+
+        result = IntentRankingResult(
+            llm_response_id=llm_response_id,
+            primary_intent=intent_result.primary_intent,
+            secondary_intent=intent_result.secondary_intent,
+            intent_confidence=Decimal(str(intent_result.confidence)),
+            commercial_score=Decimal(str(intent_result.intent_scores.get("Commercial", 0))),
+            informational_score=Decimal(str(intent_result.intent_scores.get("Informational", 0))),
+            transactional_score=Decimal(str(intent_result.intent_scores.get("Transactional", 0))),
+            navigational_score=Decimal(str(intent_result.intent_scores.get("Navigational", 0))),
+            buying_signals=intent_result.buying_signals if intent_result.buying_signals else None,
+            trust_indicators=intent_result.trust_indicators if intent_result.trust_indicators else None,
+            funnel_stage=intent_result.funnel_stage,
+            query_type=intent_result.query_type,
+        )
+
+        db.add(result)
+        await db.flush()
+
+        return result.id
 
 
 class ResponseNormalizer:

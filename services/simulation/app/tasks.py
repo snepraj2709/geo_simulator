@@ -13,7 +13,7 @@ from celery import shared_task
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from shared.models import SimulationRun, LLMResponse as LLMResponseModel, Prompt
+from shared.models import SimulationRun, LLMResponse as LLMResponseModel, Prompt, Brand
 from shared.models.enums import SimulationStatus
 from shared.queue.celery_app import celery_app
 from shared.db.postgres_client import get_async_session
@@ -25,6 +25,10 @@ from services.simulation.components import (
     PromptQueue,
     PromptQueueItem,
     ResponseAggregator,
+    EnhancedBrandExtractor,
+    IntentRankingAnalyzer,
+    PriorityOrderDetector,
+    ContextualFramingAnalyzer,
 )
 from services.simulation.components.orchestrator import OrchestratorConfig
 from services.simulation.components.rate_limiter import get_simulation_rate_limiter
@@ -165,11 +169,17 @@ async def _run_simulation_async(
             # Run orchestration
             responses = await orchestrator.run(prompt_queue)
 
+            # Initialize analyzers
+            enhanced_extractor = EnhancedBrandExtractor(use_ner=True)
+            intent_analyzer = IntentRankingAnalyzer()
+            priority_detector = PriorityOrderDetector()
+            framing_analyzer = ContextualFramingAnalyzer()
+
             # Aggregate responses
             aggregator = ResponseAggregator(simulation_id)
             aggregator.add_responses(responses)
 
-            # Extract brands
+            # Extract brands using legacy extractor for backward compatibility
             extractor = BrandExtractor()
             extractions = await extractor.extract_batch(responses)
 
@@ -181,7 +191,7 @@ async def _run_simulation_async(
                     extraction,
                 )
 
-            # Store responses in database
+            # Store responses in database and run enhanced analysis
             for response in responses:
                 db_response = LLMResponseModel(
                     simulation_run_id=simulation_id,
@@ -194,6 +204,69 @@ async def _run_simulation_async(
                     brands_mentioned=response.brands_mentioned,
                 )
                 db.add(db_response)
+                await db.flush()  # Get the response ID
+
+                # Run enhanced brand extraction with NER
+                enhanced_brands = enhanced_extractor.extract_brands(
+                    response.response_text,
+                    known_brands=response.brands_mentioned,
+                )
+
+                # Run intent analysis
+                intent_result = intent_analyzer.analyze(response.response_text)
+
+                # Run priority and framing analysis if brands found
+                if enhanced_brands:
+                    priority_analyses = priority_detector.analyze(
+                        response.response_text,
+                        enhanced_brands,
+                    )
+                    framing_analyses = framing_analyzer.analyze(
+                        response.response_text,
+                        enhanced_brands,
+                    )
+
+                    # Store intent ranking result
+                    await aggregator.store_intent_ranking_result(
+                        db,
+                        db_response.id,
+                        intent_result,
+                    )
+
+                    # Store brand mention analyses
+                    for brand, priority, framing in zip(
+                        enhanced_brands, priority_analyses, framing_analyses
+                    ):
+                        # Get or create brand record
+                        brand_query = await db.execute(
+                            select(Brand).where(
+                                Brand.normalized_name == brand.normalized_name
+                            )
+                        )
+                        brand_record = brand_query.scalar_one_or_none()
+
+                        if not brand_record:
+                            brand_record = Brand(
+                                name=brand.brand_name,
+                                normalized_name=brand.normalized_name,
+                                is_tracked=False,
+                            )
+                            db.add(brand_record)
+                            await db.flush()
+
+                        # Store brand mention analysis
+                        await aggregator.store_brand_mention_analysis(
+                            db,
+                            db_response.id,
+                            brand_record.id,
+                            brand,
+                            intent_result,
+                            priority,
+                            framing,
+                        )
+
+            # Store aggregated simulation metrics
+            await aggregator.store_aggregated_metrics(db)
 
             # Update simulation status
             simulation.status = SimulationStatus.COMPLETED.value
