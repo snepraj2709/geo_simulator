@@ -1,3 +1,1 @@
-"""
-Graph builder service application module.
-"""
+"""Knowledge Graph Builder FastAPI Application."""
