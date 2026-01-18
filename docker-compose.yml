@@ -137,7 +137,6 @@ services:
       context: .
       dockerfile: Dockerfile
       target: worker
-    container_name: llm-brand-monitor-worker
     restart: unless-stopped
     environment:
       - APP_ENV=development
