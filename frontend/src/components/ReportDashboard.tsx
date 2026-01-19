@@ -20,9 +20,10 @@ import { brandStates, competitorData, geoScore, modelPerformance, radarData } fr
 
 interface ReportDashboardProps {
   brandUrl: string;
+  onComplete?: () => void;
 }
 
-export function ReportDashboard({ brandUrl }: ReportDashboardProps) {
+export function ReportDashboard({ brandUrl, onComplete }: ReportDashboardProps) {
 
   return (
     <div className="min-h-screen px-4 py-8 relative overflow-hidden">
@@ -268,7 +269,7 @@ export function ReportDashboard({ brandUrl }: ReportDashboardProps) {
                 <AlertTriangle className="w-5 h-5 text-yellow-400" />
               </div>
               <div className="flex-1">
-                <h4 className="text-white mb-1">Address Competitor Gap</h4>
+                <h4 className="text-white mb-1" onClick={()=>onComplete}>Address Competitor Gap</h4>
                 <p className="text-sm text-gray-400">
                   Competitor D scores 3 points higher. Analyze their content strategy and identify differentiation opportunities.
                 </p>
