@@ -1,43 +1,50 @@
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, Sparkles, Users, Zap, CheckCircle, Lightbulb } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Sparkles, Users, Zap, CheckCircle, Lightbulb, FileText, LayoutDashboard } from 'lucide-react';
 import { Button } from '../ui/button';
-import type { Route } from '../../App';
-
-interface SidebarProps {
-  currentRoute: Route;
-  onNavigate: (route: Route) => void;
-}
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const menuItems = [
   {
-    id: 'run-simulator' as Route,
+    path: '/dashboard',
+    label: 'Dashboard',
+    icon: LayoutDashboard,
+  },
+  {
+    path: '/run-simulator',
     label: 'Run Brand Simulator',
     icon: Sparkles,
   },
   {
-    id: 'all-personas' as Route,
+    path: '/all-personas',
     label: 'All Personas',
     icon: Users,
   },
   {
-    id: 'persona-simulation' as Route,
-    label: 'Persona Simulation Engine',
+    path: '/persona-simulation',
+    label: 'Persona Simulation',
     icon: Zap,
   },
   {
-    id: 'preflight-checker' as Route,
+    path: '/preflight-checker',
     label: 'Pre-Flight GEO Checker',
     icon: CheckCircle,
   },
   {
-    id: 'insights' as Route,
+    path: '/reports',
+    label: 'Analytics & Reports',
+    icon: FileText,
+  },
+  {
+    path: '/insights',
     label: 'Insights & Recommendations',
     icon: Lightbulb,
   },
 ];
 
-export function Sidebar({ currentRoute, onNavigate }: SidebarProps) {
+export function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
 
   return (
     <div
@@ -52,7 +59,7 @@ export function Sidebar({ currentRoute, onNavigate }: SidebarProps) {
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-blue-500 flex items-center justify-center">
               <Sparkles className="w-4 h-4 text-white" />
             </div>
-            <span className="text-white">GEO Platform</span>
+            <span className="text-white">GEO Simulator</span>
           </div>
         )}
         {isCollapsed && (
@@ -66,12 +73,12 @@ export function Sidebar({ currentRoute, onNavigate }: SidebarProps) {
       <nav className="flex-1 px-3 py-4 space-y-1">
         {menuItems.map((item) => {
           const Icon = item.icon;
-          const isActive = currentRoute === item.id;
+          const isActive = location.pathname === item.path;
 
           return (
             <button
-              key={item.id}
-              onClick={() => onNavigate(item.id)}
+              key={item.path}
+              onClick={() => navigate(item.path)}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
                 isActive
                   ? 'bg-violet-500/20 text-violet-300 border border-violet-500/30'

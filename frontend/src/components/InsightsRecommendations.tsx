@@ -22,93 +22,6 @@ export function InsightsRecommendations() {
 
           {/* All Insights */}
           <TabsContent value="all" className="space-y-6">
-            {/* Priority Recommendations */}
-            <div className="p-6 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl text-white">High Priority Actions</h2>
-                <span className="px-3 py-1 rounded-full bg-red-500/20 text-red-400 text-sm">
-                  3 critical
-                </span>
-              </div>
-
-              <div className="space-y-3">
-                <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 space-y-3">
-                  <div className="flex items-start gap-3">
-                    <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-                    <div className="flex-1">
-                      <h3 className="text-white mb-1">Zero Brand Mentions in Perplexity</h3>
-                      <p className="text-sm text-gray-400 mb-3">
-                        Your brand is not being cited in any Perplexity responses across 40 prompts
-                      </p>
-                      <div className="flex items-center gap-2 text-xs text-gray-500">
-                        <span>Impact: High</span>
-                        <span>•</span>
-                        <span>Effort: Medium</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="pl-8 pt-3 border-t border-red-500/20 space-y-2">
-                    <p className="text-sm text-gray-300">Recommended Actions:</p>
-                    <ul className="text-sm text-gray-400 space-y-1">
-                      <li>• Create authoritative comparison content</li>
-                      <li>• Build backlinks from industry publications</li>
-                      <li>• Publish research and data-driven reports</li>
-                    </ul>
-                  </div>
-                </div>
-
-                <div className="p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/20 space-y-3">
-                  <div className="flex items-start gap-3">
-                    <AlertTriangle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
-                    <div className="flex-1">
-                      <h3 className="text-white mb-1">Low Trust Signals for VP Personas</h3>
-                      <p className="text-sm text-gray-400 mb-3">
-                        Executive-level personas receive 40% fewer recommendations than manager personas
-                      </p>
-                      <div className="flex items-center gap-2 text-xs text-gray-500">
-                        <span>Impact: High</span>
-                        <span>•</span>
-                        <span>Effort: High</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="pl-8 pt-3 border-t border-yellow-500/20 space-y-2">
-                    <p className="text-sm text-gray-300">Recommended Actions:</p>
-                    <ul className="text-sm text-gray-400 space-y-1">
-                      <li>• Add executive-focused case studies</li>
-                      <li>• Create ROI calculators and business impact content</li>
-                      <li>• Publish thought leadership from your C-suite</li>
-                    </ul>
-                  </div>
-                </div>
-
-                <div className="p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/20 space-y-3">
-                  <div className="flex items-start gap-3">
-                    <TrendingUp className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
-                    <div className="flex-1">
-                      <h3 className="text-white mb-1">Competitor D Outranks You by 12%</h3>
-                      <p className="text-sm text-gray-400 mb-3">
-                        Competitor D is recommended 3x more often in decision-stage prompts
-                      </p>
-                      <div className="flex items-center gap-2 text-xs text-gray-500">
-                        <span>Impact: Medium</span>
-                        <span>•</span>
-                        <span>Effort: Medium</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="pl-8 pt-3 border-t border-yellow-500/20 space-y-2">
-                    <p className="text-sm text-gray-300">Recommended Actions:</p>
-                    <ul className="text-sm text-gray-400 space-y-1">
-                      <li>• Analyze their content strategy and differentiation</li>
-                      <li>• Create head-to-head comparison content</li>
-                      <li>• Highlight unique features and use cases</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            </div>
-
             {/* Quick Wins */}
             <div className="p-6 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm space-y-4">
               <div className="flex items-center justify-between">
@@ -196,6 +109,93 @@ export function InsightsRecommendations() {
                     </button>
                   </div>
                 ))}
+              </div>
+            </div>
+
+            {/* Priority Recommendations */}
+            <div className="p-6 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl text-white">High Priority Actions</h2>
+                <span className="px-3 py-1 rounded-full bg-red-500/20 text-red-400 text-sm">
+                  3 critical
+                </span>
+              </div>
+
+              <div className="space-y-3">
+                <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 space-y-3">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <h3 className="text-white mb-1">Zero Brand Mentions in Perplexity</h3>
+                      <p className="text-sm text-gray-400 mb-3">
+                        Your brand is not being cited in any Perplexity responses across 40 prompts
+                      </p>
+                      <div className="flex items-center gap-2 text-xs text-gray-500">
+                        <span>Impact: High</span>
+                        <span>•</span>
+                        <span>Effort: Medium</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="pl-8 pt-3 border-t border-red-500/20 space-y-2">
+                    <p className="text-sm text-gray-300">Recommended Actions:</p>
+                    <ul className="text-sm text-gray-400 space-y-1">
+                      <li>• Create authoritative comparison content</li>
+                      <li>• Build backlinks from industry publications</li>
+                      <li>• Publish research and data-driven reports</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/20 space-y-3">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <h3 className="text-white mb-1">Low Trust Signals for VP Personas</h3>
+                      <p className="text-sm text-gray-400 mb-3">
+                        Executive-level personas receive 40% fewer recommendations than manager personas
+                      </p>
+                      <div className="flex items-center gap-2 text-xs text-gray-500">
+                        <span>Impact: High</span>
+                        <span>•</span>
+                        <span>Effort: High</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="pl-8 pt-3 border-t border-yellow-500/20 space-y-2">
+                    <p className="text-sm text-gray-300">Recommended Actions:</p>
+                    <ul className="text-sm text-gray-400 space-y-1">
+                      <li>• Add executive-focused case studies</li>
+                      <li>• Create ROI calculators and business impact content</li>
+                      <li>• Publish thought leadership from your C-suite</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/20 space-y-3">
+                  <div className="flex items-start gap-3">
+                    <TrendingUp className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <h3 className="text-white mb-1">Competitor D Outranks You by 12%</h3>
+                      <p className="text-sm text-gray-400 mb-3">
+                        Competitor D is recommended 3x more often in decision-stage prompts
+                      </p>
+                      <div className="flex items-center gap-2 text-xs text-gray-500">
+                        <span>Impact: Medium</span>
+                        <span>•</span>
+                        <span>Effort: Medium</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="pl-8 pt-3 border-t border-yellow-500/20 space-y-2">
+                    <p className="text-sm text-gray-300">Recommended Actions:</p>
+                    <ul className="text-sm text-gray-400 space-y-1">
+                      <li>• Analyze their content strategy and differentiation</li>
+                      <li>• Create head-to-head comparison content</li>
+                      <li>• Highlight unique features and use cases</li>
+                    </ul>
+                  </div>
+                </div>
               </div>
             </div>
           </TabsContent>

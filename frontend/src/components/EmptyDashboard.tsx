@@ -22,7 +22,7 @@ export function EmptyDashboard({ onStart }: EmptyDashboardProps) {
         </div>
 
         <div className="space-y-3">
-          <h1 className="text-4xl text-white">Welcome to GEO Platform</h1>
+          <h1 className="text-4xl text-white">Welcome to GEO Simulator</h1>
           <p className="text-lg text-gray-400 max-w-lg mx-auto">
             Start your journey to AI visibility by running your first brand simulation
           </p>
