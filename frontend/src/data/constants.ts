@@ -327,6 +327,27 @@ export const modelPerformance = [
   { model: 'Perplexity', mentions: 12, recommendations: 5, ignored: 2 },
 ];
 
+export const brand_simulation_steps = [
+  {
+    id: 1,
+    text: "Scrape & analyze your website",
+    iconBg: "bg-violet-500/20",
+    iconColor: "text-violet-400"
+  },
+  {
+    id: 2,
+    text: "Generate AI-powered personas",
+    iconBg: "bg-blue-500/20",
+    iconColor: "text-blue-400"
+  },
+  {
+    id: 3,
+    text: "Simulate LLM responses",
+    iconBg: "bg-cyan-500/20",
+    iconColor: "text-cyan-400"
+  }
+];
+
 export const steps:Step[] = [
   {
     id: 1,

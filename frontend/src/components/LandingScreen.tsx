@@ -1,7 +1,6 @@
-import { useState } from 'react';
 import { Button } from './ui/button';
-import { Input } from './ui/input';
 import { Sparkles, TrendingUp, Eye, Shield } from 'lucide-react';
+import { UrlInputForm } from './UrlInputForm';
 
 interface LandingScreenProps {
   onStart: (url: string) => void;
@@ -10,45 +9,6 @@ interface LandingScreenProps {
 }
 
 export function LandingScreen({ onStart, onLoginClick, onSignUpClick }: LandingScreenProps) {
-  const [url, setUrl] = useState('');
-  const [error, setError] = useState('');
-
-  const normalizeUrl = (input: string): string => {
-    let normalized = input.trim();
-    
-    // Remove protocol if present
-    normalized = normalized.replace(/^(https?:\/\/)?(www\.)?/, '');
-    
-    // Remove trailing slashes
-    normalized = normalized.replace(/\/+$/, '');
-    
-    return normalized;
-  };
-
-  const isValidDomain = (domain: string): boolean => {
-    // Basic domain validation: at least one dot and valid characters
-    const domainRegex = /^[a-zA-Z0-9][a-zA-Z0-9-_.]*\.[a-zA-Z]{2,}$/;
-    return domainRegex.test(domain);
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    
-    const normalized = normalizeUrl(url);
-    
-    if (!normalized) {
-      setError('Please enter a website URL');
-      return;
-    }
-    
-    if (!isValidDomain(normalized)) {
-      setError('Please enter a valid domain (e.g., example.com)');
-      return;
-    }
-    
-    onStart(normalized);
-  };
 
   return (
     <div className="min-h-screen flex flex-col items-center pt-5 px-4 relative overflow-hidden">
@@ -97,31 +57,12 @@ export function LandingScreen({ onStart, onLoginClick, onSignUpClick }: LandingS
         </div>
 
         {/* Input form */}
-        <form onSubmit={handleSubmit} className="max-w-xl mx-auto mt-12">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <Input
-              type="text"
-              placeholder="Enter your website URL (e.g., acme.com)"
-              value={url}
-              onChange={(e) => {
-                setUrl(e.target.value);
-                setError('');
-              }}
-              className="flex-1 h-14 bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-violet-500/50 focus:ring-violet-500/20"
-              required
-            />
-            <Button 
-              type="submit"
-              className="h-14 px-8 bg-gradient-to-r from-violet-600 to-blue-600 hover:from-violet-700 hover:to-blue-700 text-white shadow-lg shadow-violet-500/25"
-            >
-              Sign up to Run AI Brand Simulation
-            </Button>
-          </div>
-          {error && (
-            <p className="text-red-400 text-sm mt-2 text-left">{error}</p>
-          )}
-          <p className="text-xs text-gray-400 mt-3">Free preview. No credit card required.</p>
-        </form>
+        <UrlInputForm 
+          onSubmit={onStart}
+          buttonText="Sign up to Run AI Brand Simulation"
+          subtext="Free preview. No credit card required."
+          className="mt-12"
+        />
 
         {/* Value props */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-16 max-w-3xl mx-auto">

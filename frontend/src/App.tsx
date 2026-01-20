@@ -68,6 +68,11 @@ function App() {
     setShowAuth(true);
   };
 
+  const handleNewWebsiteSubmit = (url: string) => {
+    setPendingUrl(url);
+    setCurrentRoute('run-simulator');
+    setShowAuth(false);
+  };
   // Unauthenticated Flow
   if (!isAuthenticated) {
     return (
@@ -103,7 +108,7 @@ function App() {
         onLogout={handleLogout}
       >
         {currentRoute === 'dashboard' && !hasWebsite && (
-          <EmptyDashboard onNavigate={() => setCurrentRoute('run-simulator')} />
+          <EmptyDashboard onStart={handleNewWebsiteSubmit} />
         )}
         
         {currentRoute === 'dashboard' && hasWebsite && (

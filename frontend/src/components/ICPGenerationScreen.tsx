@@ -63,7 +63,6 @@ export function ICPGenerationScreen({ onComplete }: ICPGenerationScreenProps) {
     onComplete(icpsWithPrompts);
   };
 
-  const hasApprovedICPs = approvedICPs.size > 0;
 
   return (
     <div className="min-h-screen flex flex-col px-4 pt-5 relative overflow-hidden">
@@ -169,16 +168,19 @@ export function ICPGenerationScreen({ onComplete }: ICPGenerationScreenProps) {
         </div>
 
         {/* Continue Button */}
-        {hasApprovedICPs && (
-          <div className="flex justify-center py-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <Button
-              onClick={handleContinue}
-              className="px-8 h-12 bg-gradient-to-r from-violet-600 to-blue-600 hover:from-violet-700 hover:to-blue-700 text-white shadow-lg shadow-violet-500/25"
-            >
-              Continue to Prompt Generation
-            </Button>
-          </div>
-        )}
+        <div className="flex justify-center py-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <Button
+            onClick={handleContinue}
+            disabled={approvedICPs.size === 0}
+            className={`px-8 h-12 text-white shadow-lg shadow-violet-500/25 transition-all duration-300 disabled:pointer-events-auto disabled:cursor-not-allowed ${
+              approvedICPs.size > 0 
+                ? 'bg-gradient-to-r from-violet-600 to-blue-600 hover:from-violet-700 hover:to-blue-700' 
+                : 'bg-gray-700'
+            }`}
+          >
+            Continue to Prompt Generation
+          </Button>
+        </div>
       </div>
     </div>
   );
