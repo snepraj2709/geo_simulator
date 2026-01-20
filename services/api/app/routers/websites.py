@@ -95,31 +95,54 @@ async def list_websites(
     params = PaginationParams(page=page, limit=limit)
 
     # Build query
-    query = select(Website).where(Website.organization_id == current_user.organization_id)
+    # Optimized query with subqueries for counts
+    # Subquery for ICP counts
+    icp_count_subquery = (
+        select(func.count())
+        .select_from(ICP)
+        .where(ICP.website_id == Website.id)
+        .correlate(Website)
+        .scalar_subquery()
+    )
+
+    # Subquery for Conversation counts
+    conv_count_subquery = (
+        select(func.count())
+        .select_from(ConversationSequence)
+        .where(ConversationSequence.website_id == Website.id)
+        .correlate(Website)
+        .scalar_subquery()
+    )
+
+    # Main query selecting Website and the calculated counts
+    query = (
+        select(Website, icp_count_subquery, conv_count_subquery)
+        .where(Website.organization_id == current_user.organization_id)
+    )
 
     if status:
         query = query.where(Website.status == status)
 
-    # Get total count
-    count_query = select(func.count()).select_from(query.subquery())
+    # Get total count (simple count of main entity)
+    # We need a separate query for total count for pagination metadata
+    count_query = select(func.count()).where(Website.organization_id == current_user.organization_id)
+    if status:
+        count_query = count_query.where(Website.status == status)
+    
     total = await db.scalar(count_query) or 0
 
-    # Get paginated results
+    # Apply pagination
     query = query.offset(params.offset).limit(params.limit).order_by(Website.created_at.desc())
-    result = await db.execute(query)
-    websites = result.scalars().all()
 
-    # Get counts for each website
+    # Execute
+    result = await db.execute(query)
+    rows = result.all()
+
+    # Transform to response model
     items = []
-    for website in websites:
-        icp_count = await db.scalar(
-            select(func.count()).select_from(ICP).where(ICP.website_id == website.id)
-        )
-        conv_count = await db.scalar(
-            select(func.count())
-            .select_from(ConversationSequence)
-            .where(ConversationSequence.website_id == website.id)
-        )
+    for row in rows:
+        website, icp_count, conv_count = row
+        
         item = WebsiteListItem(
             id=website.id,
             domain=website.domain,
