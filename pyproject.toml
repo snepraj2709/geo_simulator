@@ -59,7 +59,7 @@ numpy = "^1.26.3"
 python-dotenv = "^1.0.0"
 python-multipart = "^0.0.6"
 python-jose = { extras = ["cryptography"], version = "^3.3.0" }
-passlib = { extras = ["bcrypt"], version = "^1.7.4" }
+bcrypt = "^4.0.1"
 tenacity = "^8.2.3"
 structlog = "^24.1.0"
 
