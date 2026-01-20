@@ -42,7 +42,17 @@ async def register(request: RegisterRequest, db: DBSession):
         )
 
     # Create organization
-    org_slug = request.organization_name.lower().replace(" ", "-")[:100]
+    base_slug = request.organization_name.lower().replace(" ", "-")[:100]
+    org_slug = base_slug
+    
+    # Check if slug exists
+    if await db.scalar(select(Organization).where(Organization.slug == org_slug)):
+        # Append random suffix to make it unique
+        import secrets
+        suffix = secrets.token_hex(4)
+        # Ensure we don't exceed length limit (assuming 100 chars)
+        org_slug = f"{base_slug[:90]}-{suffix}"
+
     organization = Organization(
         name=request.organization_name,
         slug=org_slug,
