@@ -5,10 +5,11 @@ import type { User } from '../../App';
 
 interface AuthScreenProps {
   onLogin: (user: User) => void;
+  initialMode?: 'login' | 'signup';
 }
 
-export function AuthScreen({ onLogin }: AuthScreenProps) {
-  const [mode, setMode] = useState<'login' | 'signup'>('login');
+export function AuthScreen({ onLogin, initialMode = 'login' }: AuthScreenProps) {
+  const [mode, setMode] = useState<'login' | 'signup'>(initialMode);
 
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-auto">

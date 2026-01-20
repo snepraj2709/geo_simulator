@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { LandingScreen } from './LandingScreen';
 import { ScrapingScreen } from './ScrapingScreen';
 import { ICPGenerationScreen } from './ICPGenerationScreen';
@@ -10,12 +10,19 @@ import { ICP, SimulationStep } from '@/types';
 
 interface SimulationFlowProps {
   onComplete: () => void;
+  initialUrl?: string;
 } 
 
-export function SimulationFlow({ onComplete }: SimulationFlowProps) {
+export function SimulationFlow({ onComplete, initialUrl }: SimulationFlowProps) {
   const [currentStep, setCurrentStep] = useState<SimulationStep>('landing');
-  const [brandUrl, setBrandUrl] = useState('');
+  const [brandUrl, setBrandUrl] = useState(initialUrl || '');
   const [icps, setICPs] = useState<ICP[]>([]);
+
+  useEffect(() => {
+    if (initialUrl) {
+      setCurrentStep('scraping');
+    }
+  }, [initialUrl]);
 
   const handleStartSimulation = (url: string) => {
     setBrandUrl(url);

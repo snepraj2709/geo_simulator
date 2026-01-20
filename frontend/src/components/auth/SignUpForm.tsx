@@ -26,6 +26,13 @@ export function SignUpForm({ onLogin, onSwitchToLogin }: SignUpFormProps) {
     });
   };
 
+  const handleGuestLogin = () => {
+    onLogin({
+      name: 'Guest User',
+      email: 'guest@geosimulator.ai',
+    });
+  };
+
   return (
     <div className="space-y-5 bg-gradient-to-br from-violet-50/90 to-blue-50/90 border border-white/50 backdrop-blur-xl shadow-xl rounded-xl py-8">
       {/* Logo/Header */}
@@ -107,6 +114,17 @@ export function SignUpForm({ onLogin, onSwitchToLogin }: SignUpFormProps) {
               <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
             </svg>
             Sign up with Google
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={handleGuestLogin}
+            className="w-full h-11 bg-white border border-violet-200 text-violet-700 hover:bg-violet-50 hover:text-violet-700 hover:border-violet-300 hover:shadow-md transition-all duration-300 group"
+          >
+            <svg className="w-5 h-5 mr-2 text-violet-500 group-hover:scale-110 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+            Guest Login
           </Button>
         </div>
 

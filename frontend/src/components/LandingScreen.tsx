@@ -5,9 +5,11 @@ import { Sparkles, TrendingUp, Eye, Shield } from 'lucide-react';
 
 interface LandingScreenProps {
   onStart: (url: string) => void;
+  onLoginClick?: () => void;
+  onSignUpClick?: () => void;
 }
 
-export function LandingScreen({ onStart }: LandingScreenProps) {
+export function LandingScreen({ onStart, onLoginClick, onSignUpClick }: LandingScreenProps) {
   const [url, setUrl] = useState('');
   const [error, setError] = useState('');
 
@@ -56,6 +58,25 @@ export function LandingScreen({ onStart }: LandingScreenProps) {
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-600/20 rounded-full blur-[120px] animate-pulse delay-700"></div>
       </div>
 
+      {/* Top Right Header - Only show if auth callbacks provided */}
+      {onLoginClick && onSignUpClick && (
+        <div className="absolute top-5 right-5 z-50 flex gap-3">
+          <Button 
+            variant="ghost" 
+            onClick={onLoginClick}
+            className="text-gray-300 hover:text-white hover:bg-white/10"
+          >
+            Log in
+          </Button>
+          <Button 
+            onClick={onSignUpClick}
+            className="bg-white text-black hover:bg-gray-100 font-medium"
+          >
+            Sign up
+          </Button>
+        </div>
+      )}
+
       <div className="relative z-10 max-w-4xl mx-auto text-center space-y-8">
         {/* Logo/Badge */}
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-violet-500/10 border border-violet-500/20 backdrop-blur-sm">
@@ -93,12 +114,13 @@ export function LandingScreen({ onStart }: LandingScreenProps) {
               type="submit"
               className="h-14 px-8 bg-gradient-to-r from-violet-600 to-blue-600 hover:from-violet-700 hover:to-blue-700 text-white shadow-lg shadow-violet-500/25"
             >
-              Run AI Brand Simulation
+              Sign up to Run AI Brand Simulation
             </Button>
           </div>
           {error && (
             <p className="text-red-400 text-sm mt-2 text-left">{error}</p>
           )}
+          <p className="text-xs text-gray-400 mt-3">Free preview. No credit card required.</p>
         </form>
 
         {/* Value props */}

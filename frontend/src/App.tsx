@@ -8,6 +8,7 @@ import { PreFlightChecker } from './components/PreFlightChecker';
 import { InsightsRecommendations } from './components/InsightsRecommendations';
 import { AnalyticsDashboard } from './components/AnalyticsDashboard';
 import { EmptyDashboard } from './components/EmptyDashboard';
+import { LandingScreen } from './components/LandingScreen';
 
 export type Route = 
   | 'dashboard'
@@ -28,25 +29,69 @@ function App() {
   const [user, setUser] = useState<User | null>(null);
   const [currentRoute, setCurrentRoute] = useState<Route>('dashboard');
   const [hasWebsite, setHasWebsite] = useState(false);
+  
+  // New auth flow state
+  const [showAuth, setShowAuth] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+  const [pendingUrl, setPendingUrl] = useState('');
 
   const handleLogin = (userData: User) => {
     setUser(userData);
     setIsAuthenticated(true);
+    setShowAuth(false);
+    
+    // If we have a pending URL, go straight to simulator
+    if (pendingUrl) {
+      setHasWebsite(true);
+      setCurrentRoute('run-simulator');
+    }
   };
 
   const handleLogout = () => {
     setUser(null);
     setIsAuthenticated(false);
     setCurrentRoute('dashboard');
+    setShowAuth(false);
+    setPendingUrl('');
   };
 
   const handleWebsiteSubmitted = () => {
     setHasWebsite(true);
     setCurrentRoute('dashboard');
+    // Clear pending URL as it's been processed
+    setPendingUrl('');
   };
 
+  const handleLandingStart = (url: string) => {
+    setPendingUrl(url);
+    setAuthMode('signup');
+    setShowAuth(true);
+  };
+
+  // Unauthenticated Flow
   if (!isAuthenticated) {
-    return <AuthScreen onLogin={handleLogin} />;
+    return (
+      <div className="dark min-h-screen bg-[#0a0a0f] text-foreground">
+        {showAuth ? (
+          <AuthScreen 
+            onLogin={handleLogin} 
+            initialMode={authMode} 
+          />
+        ) : (
+          <LandingScreen 
+            onStart={handleLandingStart}
+            onLoginClick={() => {
+              setAuthMode('login');
+              setShowAuth(true);
+            }}
+            onSignUpClick={() => {
+              setAuthMode('signup');
+              setShowAuth(true);
+            }}
+          />
+        )}
+      </div>
+    );
   }
 
   return (
@@ -66,7 +111,10 @@ function App() {
         )}
         
         {currentRoute === 'run-simulator' && (
-          <SimulationFlow onComplete={handleWebsiteSubmitted} />
+          <SimulationFlow 
+            onComplete={handleWebsiteSubmitted} 
+            initialUrl={pendingUrl}
+          />
         )}
         
         {currentRoute === 'all-personas' && (
