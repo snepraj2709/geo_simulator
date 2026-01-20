@@ -2,6 +2,7 @@
 FastAPI dependencies for the API service.
 """
 
+import json
 import uuid
 from typing import Annotated
 
@@ -58,9 +59,12 @@ async def get_current_user(
     if cached_user_data:
         try:
             # Reconstruct user object from cached dict
-            # Note: converting date strings back to objects if necessary
-            # For simplicity, we assume model_validate works with the JSON dict
-            user = User(**cached_user_data)
+            if isinstance(cached_user_data, str):
+                user_data_dict = json.loads(cached_user_data)
+            else:
+                user_data_dict = cached_user_data
+
+            user = User(**user_data_dict)
             # Ensure it is attached to current session if needed, or use as detached object.
             # Since we are using it for read-only in dependencies, detached is usually fine.
             # However, if we need to update it, we might need to merge it back to session.
@@ -91,7 +95,7 @@ async def get_current_user(
                 # Add other necessary fields
             }
             # Cache for 5 minutes
-            await user_cache.set(f"{user_id}", user_dict, ttl=300)
+            await user_cache.set(f"{user_id}", json.dumps(user_dict), ttl=300)
 
     if user is None or not user.is_active:
         raise HTTPException(
