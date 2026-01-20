@@ -48,8 +48,50 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    result = await db.execute(select(User).where(User.id == uuid.UUID(user_id)))
-    user = result.scalar_one_or_none()
+    # Check cache first
+    from shared.db.redis import RedisCache
+    
+    # Use a separate cache prefix for users
+    user_cache = RedisCache(prefix="user")
+    cached_user_data = await user_cache.get(f"{user_id}")
+    
+    if cached_user_data:
+        try:
+            # Reconstruct user object from cached dict
+            # Note: converting date strings back to objects if necessary
+            # For simplicity, we assume model_validate works with the JSON dict
+            user = User(**cached_user_data)
+            # Ensure it is attached to current session if needed, or use as detached object.
+            # Since we are using it for read-only in dependencies, detached is usually fine.
+            # However, if we need to update it, we might need to merge it back to session.
+            # But get_current_user is mostly for authentication and authorization.
+            
+            # If we need lazy loading relationships, this might be tricky with detached object.
+            # But the User model seems simple.
+            pass
+        except Exception:
+            # Fallback to DB if cache parsing fails
+            cached_user_data = None
+
+    if not cached_user_data:
+        result = await db.execute(select(User).where(User.id == uuid.UUID(user_id)))
+        user = result.scalar_one_or_none()
+        
+        if user and user.is_active:
+            # Cache the user data
+            # Convert to dict and exclude internal SQLAlchemy state
+            user_dict = {
+                "id": str(user.id),
+                "email": user.email,
+                "name": user.name,
+                "organization_id": str(user.organization_id),
+                "role": user.role,
+                "is_active": user.is_active,
+                "password_hash": user.password_hash # Required for password verification if reused
+                # Add other necessary fields
+            }
+            # Cache for 5 minutes
+            await user_cache.set(f"{user_id}", user_dict, ttl=300)
 
     if user is None or not user.is_active:
         raise HTTPException(

@@ -179,54 +179,77 @@ class WebsiteScraper:
             page = await context.new_page()
 
             while len(url_queue) > 0 and len(results) < self.max_pages:
-                queued = url_queue.get_next()
-                if not queued:
-                    break
+                # Get batch of URLs
+                batch_size = 5
+                batch = []
+                
+                # Fill batch
+                while len(batch) < batch_size and len(url_queue) > 0 and (len(results) + len(batch)) < self.max_pages:
+                    queued = url_queue.get_next()
+                    if not queued:
+                        break
+                    
+                    # Skip if already scraped (incremental mode)
+                    if scrape_type == ScrapeType.INCREMENTAL:
+                        if queued.url_hash in existing_hashes:
+                            logger.debug("Skipping already-scraped URL: %s", queued.url)
+                            continue
 
-                # Skip if already scraped (incremental mode)
-                if scrape_type == ScrapeType.INCREMENTAL:
-                    if queued.url_hash in existing_hashes:
-                        logger.debug("Skipping already-scraped URL: %s", queued.url)
+                    # Check circuit breaker
+                    if self.circuit_breaker.is_open(domain):
+                        logger.warning("Circuit breaker open for %s, skipping", domain)
                         continue
 
-                # Check circuit breaker
-                if self.circuit_breaker.is_open(domain):
-                    logger.warning("Circuit breaker open for %s, skipping", domain)
+                    batch.append(queued)
+
+                if not batch:
+                    if len(url_queue) == 0:
+                        break
                     continue
 
-                # Apply rate limiting
-                await self.rate_limiter.acquire(domain)
+                # Process batch concurrently
+                logger.info("Processing batch of %d URLs", len(batch))
+                
+                async def process_url(queued_url):
+                    # Apply rate limiting
+                    await self.rate_limiter.acquire(domain)
+                    
+                    # Scrape the page with retries
+                    result = await self._scrape_page_with_retry(
+                        page, queued_url, content_parser, url_queue
+                    )
+                    
+                    # Record response time for adaptive rate limiting
+                    self.rate_limiter.record_response_time(domain, result.scrape_time_ms)
 
-                # Scrape the page with retries
-                result = await self._scrape_page_with_retry(
-                    page, queued, content_parser, url_queue
-                )
-                results.append(result)
-                url_queue.mark_scraped(queued.url_hash)
+                    # Update circuit breaker
+                    if result.success:
+                        self.circuit_breaker.record_success(domain)
+                    else:
+                        self.circuit_breaker.record_failure(domain)
 
-                # Record response time for adaptive rate limiting
-                self.rate_limiter.record_response_time(domain, result.scrape_time_ms)
+                    return result
 
-                # Update circuit breaker
-                if result.success:
-                    self.circuit_breaker.record_success(domain)
-                else:
-                    self.circuit_breaker.record_failure(domain)
+                # Execute batch
+                batch_results = await asyncio.gather(*(process_url(q) for q in batch))
+                
+                # Process results
+                for i, result in enumerate(batch_results):
+                    results.append(result)
+                    url_queue.mark_scraped(batch[i].url_hash)
+                    
+                    if result.success:
+                        self._aggregate_entities(all_entities, result)
+                    
+                    if progress_callback:
+                        await progress_callback(len(results), len(url_queue), result)
 
-                # Aggregate entities
-                if result.success:
-                    self._aggregate_entities(all_entities, result)
-
-                # Progress callback
-                if progress_callback:
-                    await progress_callback(len(results), len(url_queue), result)
-
-                logger.debug(
-                    "Scraped %s: %s (queue=%d)",
-                    "OK" if result.success else "FAIL",
-                    queued.url[:80],
-                    len(url_queue),
-                )
+                    logger.debug(
+                        "Scraped %s: %s (queue=%d)",
+                        "OK" if result.success else "FAIL",
+                        batch[i].url[:80],
+                        len(url_queue),
+                    )
 
         finally:
             await context.close()
