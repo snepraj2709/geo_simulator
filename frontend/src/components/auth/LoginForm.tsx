@@ -37,65 +37,64 @@ export function LoginForm({ onLogin, onSwitchToSignUp }: LoginFormProps) {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-5 bg-gradient-to-br from-violet-50/90 to-blue-50/90 border border-white/50 backdrop-blur-xl shadow-xl rounded-xl py-8">
       {/* Logo/Header */}
-      <div className="text-center space-y-3">
-        <h1 className="text-3xl text-white">Welcome back</h1>
-        <p className="text-gray-400">Sign in to continue to your dashboard</p>
+      <div className="text-center">
+        <h1 className="text-3xl text-black">Welcome back</h1>
+        <p className="text-gray-700">Sign in to continue to your dashboard</p>
       </div>
 
       {/* Login Form */}
-      <div className="p-8 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm space-y-6">
+      <div className="pt-8 px-8 space-y-4">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email" className="text-gray-300">Email</Label>
+            <Label htmlFor="email" className="text-gray-700">Email</Label>
             <Input
               id="email"
               type="email"
               placeholder="Enter your email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="bg-white/5 border-white/10 text-white placeholder:text-gray-500"
+              className="bg-white/50 border-gray-200 text-gray-900 placeholder:text-gray-500 focus:bg-white transition-all"
               required
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="password" className="text-gray-300">Password</Label>
+            <Label htmlFor="password" className="text-gray-700">Password</Label>
             <Input
               id="password"
               type="password"
               placeholder="Enter your password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="bg-white/5 border-white/10 text-white placeholder:text-gray-500"
+              className="bg-white/50 border-gray-200 text-gray-900 placeholder:text-gray-500 focus:bg-white transition-all"
               required
             />
           </div>
 
           <Button 
             type="submit"
-            className="w-full h-11 bg-gradient-to-r from-violet-600 to-blue-600 hover:from-violet-700 hover:to-blue-700 text-white"
+             variant="gradient" size="lg" className="w-full"
           >
             Login
           </Button>
         </form>
 
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-white/10"></div>
+        <div className="pt-10 space-y-2">
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-200"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-transparent text-gray-500 text-xs uppercase tracking-wider font-medium">Or continue with</span>
+            </div>
           </div>
-          <div className="relative flex justify-center text-sm">
-            <span className="px-2 text-gray-500">Or continue with</span>
-          </div>
-        </div>
-
-        <div className="space-y-3">
           <Button
             type="button"
             variant="outline"
             onClick={handleGoogleLogin}
-            className="w-full h-11 bg-blue-500 text-white hover:bg-blue-400"
+            className="w-full h-11 bg-white text-gray-700 border-gray-200 hover:bg-gray-50 hover:text-gray-900 hover:border-gray-300 transition-all duration-200"
           >
             <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
               <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -108,17 +107,20 @@ export function LoginForm({ onLogin, onSwitchToSignUp }: LoginFormProps) {
 
           <Button
             type="button"
-            variant="outline"
+            variant="ghost"
             onClick={handleGuestLogin}
-            className="w-full h-11 bg-gray-200 text-gray-700 border-white/10 hover:bg-blue-400"
+            className="w-full h-11 bg-white border border-violet-200 text-violet-700 hover:bg-violet-50 hover:text-violet-700 hover:border-violet-300 hover:shadow-md transition-all duration-300 group"
           >
+            <svg className="w-5 h-5 mr-2 text-violet-500 group-hover:scale-110 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
             Guest Login
           </Button>
         </div>
 
         {/* Default Credentials */}
         <div className="p-4 rounded-lg bg-violet-500/10 border border-violet-500/20 space-y-2">
-          <p className="text-xs text-violet-700">Demo Credentials:</p>
+          <p className="text-xs text-violet-700">Guest Credentials:</p>
           <div className="space-y-1 text-xs font-mono">
             <div className="text-gray-400">
               Email: <span className="text-gray-700">guest@geosimulator.ai</span>
@@ -128,17 +130,16 @@ export function LoginForm({ onLogin, onSwitchToSignUp }: LoginFormProps) {
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Sign Up Link */}
+        {/* Sign Up Link */}
       <div className="text-center text-sm">
         <span className="text-gray-400">Don't have an account? </span>
         <button
           onClick={onSwitchToSignUp}
-          className="text-violet-400 hover:text-violet-300 transition-colors"
+          className="text-violet-400 hover:text-violet-500 transition-colors"
         >
           Create an account
         </button>
+      </div>
       </div>
     </div>
   );
