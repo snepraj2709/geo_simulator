@@ -29,6 +29,7 @@ from services.api.app.schemas.website import (
 
 router = APIRouter()
 
+from sqlalchemy.orm import selectinload
 
 @router.post(
     "",
@@ -75,6 +76,14 @@ async def create_website(
         "services.scraper.app.tasks.scrape_website",
         args=[str(website.id)],
         queue="scraping",
+    )
+
+    # Re-fetch with eager loading for analysis relationship to avoid MissingGreenlet
+    # Pydantic model requires this field
+    website = await db.scalar(
+        select(Website)
+        .where(Website.id == website.id)
+        .options(selectinload(Website.analysis))
     )
 
     return WebsiteResponse.model_validate(website)
@@ -181,6 +190,13 @@ async def get_website(
         select(func.count())
         .select_from(ConversationSequence)
         .where(ConversationSequence.website_id == website.id)
+    )
+
+    # Re-fetch with eager loading for analysis to avoid MissingGreenlet
+    website = await db.scalar(
+        select(Website)
+        .where(Website.id == website.id)
+        .options(selectinload(Website.analysis))
     )
 
     response = WebsiteResponse.model_validate(website)

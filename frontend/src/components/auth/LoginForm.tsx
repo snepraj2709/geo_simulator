@@ -39,12 +39,12 @@ export function LoginForm({ onLogin, onSwitchToSignUp }: LoginFormProps) {
     });
   };
 
-  const handleGoogleLogin = () => {
-    onLogin({
-      name: 'Demo User',
-      email: 'demo@geosimulator.ai',
-    });
-  };
+  // const handleGoogleLogin = () => {
+  //   onLogin({
+  //     name: 'Demo User',
+  //     email: 'demo@geosimulator.ai',
+  //   });
+  // };
 
   return (
     <div className="space-y-5 bg-gradient-to-br from-violet-50/90 to-blue-50/90 border border-white/50 backdrop-blur-xl shadow-xl rounded-xl py-8">
@@ -107,7 +107,7 @@ export function LoginForm({ onLogin, onSwitchToSignUp }: LoginFormProps) {
               <span className="px-2 bg-transparent text-gray-500 text-xs uppercase tracking-wider font-medium">Or continue with</span>
             </div>
           </div>
-          <Button
+          {/* <Button
             type="button"
             variant="outline"
             onClick={handleGoogleLogin}
@@ -120,7 +120,7 @@ export function LoginForm({ onLogin, onSwitchToSignUp }: LoginFormProps) {
               <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
             </svg>
             Continue with Google
-          </Button>
+          </Button> */}
 
           <Button
             type="button"
